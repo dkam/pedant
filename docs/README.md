@@ -100,3 +100,7 @@ without Gitea access. The issue remains the place for discussion.
 - [`decisions/0012-push-monitors.md`](decisions/0012-push-monitors.md) has
   Pedant take over Kuma's push monitors on Kuma's own URL shape, so migrating
   a job is a hostname change. Splat keeps the Rails apps' check-ins.
+- [`decisions/0013-alerts-by-ntfy-and-email.md`](decisions/0013-alerts-by-ntfy-and-email.md)
+  sends every alert to ntfy and email, configured in the app. Alerts go out on
+  going down, on recovery, and as reminders while it stays down, never for
+  "unknown".

@@ -52,6 +52,8 @@ Kuma does two things, and Pedant replaces both. Seed both from Kuma's export
   - After Pedant is down, a push monitor gets one full interval before it can
     be marked missed.
   - Pedant sends a heartbeat so its own silence raises an alarm (ADR 0008).
+- **Alerts:** ntfy and email, configured in the app. Alerts go out on down, on
+  recovery, and as reminders while it stays down, never for "unknown" (ADR 0013).
 - **Fleet inventory over SSH: optional, undecided.** If built, it uses
   `docker ps` and field-selected `docker inspect`. **Never run a bare
   `docker inspect` or read `.Config.Env`, because it returns secrets in
