@@ -15,7 +15,8 @@ that would still be true on another project?** → `learnings/`, one file per
 tool. Every claim names how to verify it.
 
 **Is it a choice we made, with alternatives we rejected?** → `decisions/`,
-numbered and dated. ADRs are append-only. A later decision that reverses one
+numbered and dated. A **Proposed** ADR is a draft and may be edited until it's
+accepted. Once **Accepted**, ADRs are append-only. A later decision that reverses one
 gets a new ADR that links back. A fact the ADR got wrong gets a dated
 `## Amendment` section at the end; never edit the body.
 
@@ -68,8 +69,8 @@ without Gitea access. The issue remains the place for discussion.
   the sibling apps. Code and CI are on GitHub, with images on ghcr.io. The job
   backend is still open.
 - [`decisions/0004-milestone-1-without-doco-cd.md`](decisions/0004-milestone-1-without-doco-cd.md)
-  (**Proposed**) makes milestone 1 uptime checks plus an SSH inventory, because
-  doco-cd isn't installed anywhere yet.
+  makes milestone 1 uptime checks, replacing Kuma, without doco-cd. The SSH
+  inventory is optional and undecided.
 - [`decisions/0005-issues-on-github.md`](decisions/0005-issues-on-github.md)
   (**superseded by 0006**) moved Pedant's issues to GitHub, because the Claude
   user couldn't see the private Gitea repo.
@@ -79,3 +80,10 @@ without Gitea access. The issue remains the place for discussion.
   says Pedant holds no age private key, shows secret changes by variable name
   only, doesn't edit secrets, and never fetches environment values from
   `docker inspect`.
+- [`decisions/0008-runs-off-the-fleet.md`](decisions/0008-runs-off-the-fleet.md)
+  runs Pedant off the fleet, on the tailnet, with the host deliberately left
+  open. Pedant's own outage reads as "unknown", and a heartbeat watches the
+  watcher.
+- [`decisions/0009-oidc-login-claimed-by-setup-code.md`](decisions/0009-oidc-login-claimed-by-setup-code.md)
+  makes login OIDC only (spool's code). The first user claims Pedant with a
+  console setup code (kith's), and after that only known users sign in.

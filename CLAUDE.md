@@ -34,21 +34,19 @@ Two rules from #5 shape the data model, so keep them in mind from day one:
 - **Deleting data is never one click or one commit away.** Pedant never exposes
   an action that removes volumes.
 
-## Milestone 1: works without doco-cd *(open: confirm)*
+## Milestone 1: uptime checks, replacing Kuma (ADR 0004)
 
 doco-cd isn't installed on any host yet, so nothing here may depend on its API.
-Milestone 1 is the two parts of Pedant that are useful today:
 
-1. **Uptime checks** (the Kuma replacement): HTTP checks on a schedule, storing
-   up/down and when that last changed, and how often it flaps. Seed the list from
-   Kuma's current monitors. Exporting them (the first step in #5) hasn't been
-   done yet.
-2. **Fleet inventory over SSH**: for each host, `docker ps` + `docker inspect`
-   gives container, image, tag, and the `org.opencontainers.image.version` /
-   `.revision` labels. This is #5's `bin/fleet` idea folded into the app.
-   Hosts are declared by hand for now (hetz01, misc01). **Never run a bare
-   `docker inspect` or read `.Config.Env`, because it returns secrets in
-   plaintext.** Select fields on the host with `--format` (ADR 0007).
+- **Uptime checks:** HTTP checks on a schedule, storing up/down, when that last
+  changed, and how often it flaps. Seed the list from Kuma's current monitors.
+  Exporting them (the first step in #5) hasn't been done yet.
+  - Pedant's own connection failing is "unknown", not "everything is down".
+  - Pedant sends a heartbeat so its own silence raises an alarm (ADR 0008).
+- **Fleet inventory over SSH: optional, undecided.** If built, it uses
+  `docker ps` and field-selected `docker inspect`. **Never run a bare
+  `docker inspect` or read `.Config.Env`, because it returns secrets in
+  plaintext** (ADR 0007).
 
 Later milestones, once the doco-cd trial on misc01 exists: read doco-cd's API,
 compare desired state (`.doco-cd.<host>.yml`) with the running state and flag
@@ -112,17 +110,17 @@ Not Postgres, not Redis, not Sidekiq.
   - The design discussion (Booko/booko-services#5) and the booko-services repo
     that doco-cd will watch are on Gitea too.
 
-## Where it runs and who can log in *(open)*
+## Where it runs and who can log in
 
-- **Host:** not one it manages (so not hetz01 or misc01), so that Pedant stays up
-  when they go down. Which host is undecided.
-- **Network:** tailnet-only, per #5.
-- **Login:** probably OIDC against `../clinch`. `../spool` has a direct OIDC
-  implementation (no omniauth, `app/controllers/oidc_auth_controller.rb`,
-  `docs/auth.md`) developed against clinch; copy that rather than inventing one.
-- **SSH:** the inventory needs an SSH key that can run `docker ps` / `docker
-  inspect` on each host. Read-only commands only; Pedant never runs anything on
-  a host that changes state over SSH.
+- **Host:** off the fleet (not hetz01 or misc01), on the tailnet only. Which
+  machine doesn't matter to the code (ADR 0008).
+- **Login:** OIDC only, ported from `../spool` (`docs/auth.md`,
+  `app/controllers/oidc_auth_controller.rb`). No passwords. The first user
+  claims the instance with a setup code printed to the console, ported from
+  `../kith` (`app/models/setup.rb`). After that, only known users sign in
+  (ADR 0009).
+- **SSH (if the inventory is built):** read-only commands only. Pedant never
+  runs anything on a host that changes state over SSH.
 
 ## Not available on this machine
 
