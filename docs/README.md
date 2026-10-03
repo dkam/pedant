@@ -104,3 +104,7 @@ without Gitea access. The issue remains the place for discussion.
   sends every alert to ntfy and email, configured in the app. Alerts go out on
   going down, on recovery, and as reminders while it stays down, never for
   "unknown".
+- [`decisions/0014-dockhand-rejected-ideas-kept.md`](decisions/0014-dockhand-rejected-ideas-kept.md)
+  rejects Dockhand for its BSL licence, and lists ideas worth taking from it
+  (written fresh, not copied): an outbound-only agent, scoped API tokens, an
+  activity log, disk alerts, CVE scans in the PR check, adopting stacks.
