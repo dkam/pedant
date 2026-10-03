@@ -54,6 +54,20 @@ drift, PR previews, and triggering deploys after a merge. Keep the source of
 "what's running" behind an interface, so the SSH reader and a later doco-cd
 reader are interchangeable.
 
+Also eventual: **a CLI and an API**, so scripts and agents can ask "what runs
+where, at which version, and is it up" without the web UI. They follow the same
+rules as the UI:
+- Reads are open to any authenticated client.
+- Any change is a PR against booko-services (ADR 0002), never a direct deploy.
+- Nothing removes volumes (ADR 0001).
+
+An MCP server is an option for the agent-facing side. If it's built, use the
+official `mcp` gem, as splat does (`app/mcp/splat_mcp_server.rb`, served at
+`/mcp`) and spool does (`bin/mcp` over stdio, tools in `app/mcp`, see
+`../spool/docs/mcp.md`). Don't hand-roll the protocol: splat's hand-rolled
+server got stuck on the 2024-11-05 spec. Keep controllers thin enough that the
+HTML and JSON views share one query layer, so the API isn't a retrofit.
+
 ## Stack
 
 Matches the sibling apps in `../` (splat, spool, clinch):
@@ -85,15 +99,14 @@ Not Postgres, not Redis, not Sidekiq.
 - The image carries `org.opencontainers.image.version` and `.revision` labels.
   Pedant reads these labels on other apps, so it should carry them itself.
 - `GIT_SHA` build arg, read at boot by `config/initializers/revision.rb`.
-- **Code and CI on GitHub; issues on Gitea.** It's the same split as clinch.
-  - The code is at `github.com/dkam/pedant` (git remote `github`). CI is GitHub
-    Actions, and images go to `ghcr.io/dkam/pedant`.
+- **Code, CI and issues are on GitHub** at `github.com/dkam/pedant` (git remote
+  `github`).
+  - CI is GitHub Actions, and images go to `ghcr.io/dkam/pedant`.
   - Copy splat's `.github/workflows/build.yml` and `ci.yml`, not its `bin/build`,
     which pushes to `reg.tbdb.info` and isn't splat's real release path.
-  - Pedant's own issues are in Gitea at `dkam/pedant` (git remote `origin`). Use
-    `tea --login booko`, not GitHub issues.
+  - Pedant's own issues are GitHub issues; use `gh` (ADR 0005).
   - The design discussion (Booko/booko-services#5) and the booko-services repo
-    that doco-cd will watch also stay on Gitea.
+    that doco-cd will watch stay on Gitea, and are read with `tea`.
 
 ## Where it runs and who can log in *(open)*
 

@@ -22,8 +22,8 @@ gets a new ADR that links back. A fact the ADR got wrong gets a dated
 **Is it an external spec we didn't write (doco-cd's API, Gitea's webhooks)?** →
 `reference/`.
 
-**Is it a task?** → The issue tracker, not here. Pedant's issues are on Gitea
-(`dkam/pedant`), not GitHub.
+**Is it a task?** → The issue tracker, not here. Pedant's issues are GitHub
+issues on `dkam/pedant` (ADR 0005).
 
 ## Layout
 
@@ -61,3 +61,6 @@ without Gitea access. The issue remains the place for discussion.
 - [`decisions/0004-milestone-1-without-doco-cd.md`](decisions/0004-milestone-1-without-doco-cd.md)
   (**Proposed**) makes milestone 1 uptime checks plus an SSH inventory, because
   doco-cd isn't installed anywhere yet.
+- [`decisions/0005-issues-on-github.md`](decisions/0005-issues-on-github.md)
+  moves Pedant's issues to GitHub, reversing ADR 0003's Gitea split. The Claude
+  user can't see the private Gitea repo.
