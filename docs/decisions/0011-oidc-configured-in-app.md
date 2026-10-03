@@ -51,3 +51,16 @@ checks, backchannel logout). Only where the settings come from changes.
   isn't meant to. That test applies to what Pedant knows about the fleet.
 - Database backups contain the encrypted client secret. They're only as safe as
   wherever the Active Record encryption keys are kept.
+
+## Amendment (2026-10-04)
+
+"printing a fresh code" was wrong. As in kith, the code is derived from
+`secret_key_base`, never stored, so it's the same code every time setup is
+open. That's acceptable: it's accepted only while setup is open, and reading it
+needs the console or `secret_key_base`, either of which is already the highest
+credential. Changing `secret_key_base` changes the code.
+
+Also as built: setup is open while there's no provider **or** nobody has signed
+in. A correct code lets that browser, within 15 minutes, claim the identity it
+brings back from the provider. `pedant:reset_oidc` clears the provider and keeps
+the users, so an existing identity signs straight back in.

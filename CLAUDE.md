@@ -132,6 +132,13 @@ Not Postgres, not Redis, not Sidekiq.
 - **SSH (if the inventory is built):** read-only commands only. Pedant never
   runs anything on a host that changes state over SSH.
 
+## Development
+
+`bin/dev` serves on **port 3036** (clinch is on 3035). Clinch's redirect URI for
+a local Pedant is `http://localhost:3036/auth/callback`. While setup is open,
+boot prints the setup code; `bin/rails pedant:setup_code` prints it again, and
+`bin/rails pedant:reset_oidc` clears the provider and reopens setup.
+
 ## Not available on this machine
 
 - **rubberneck** isn't checked out, so its liveness model (#5 suggests reusing

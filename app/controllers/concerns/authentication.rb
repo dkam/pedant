@@ -1,0 +1,68 @@
+# Sessions for OIDC logins, ported from spool. A session holds the user's id;
+# a provider `sid` is mapped in OidcSession so backchannel logout can end it.
+module Authentication
+  extend ActiveSupport::Concern
+
+  included do
+    before_action :require_authentication
+    helper_method :authenticated?, :current_user
+  end
+
+  class_methods do
+    def allow_unauthenticated_access(**options)
+      skip_before_action :require_authentication, **options
+    end
+  end
+
+  private
+    def authenticated?
+      current_user.present?
+    end
+
+    def current_user
+      return @current_user if defined?(@current_user)
+
+      @current_user = session[:user_id] && oidc_session_valid? ? User.find_by(id: session[:user_id]) : nil
+    end
+
+    def require_authentication
+      return if authenticated?
+
+      session[:return_to] = request.fullpath if request.get? && !request.xhr?
+      redirect_to login_path
+    end
+
+    def start_new_session_for(user, sid: nil)
+      # Rotate the session id on login, so a session fixated before it can't
+      # be reused after it.
+      reset_session
+      session[:user_id] = user.id
+      session[:oidc_sid] = sid if sid.present?
+      @current_user = user
+
+      if sid.present?
+        OidcSession.create!(user: user, oidc_sid: sid, session_id: session.id&.to_s.presence || SecureRandom.hex(16), expires_at: 24.hours.from_now)
+      end
+    rescue ActiveRecord::RecordNotUnique, ActiveRecord::RecordInvalid => e
+      # Losing the mapping degrades backchannel logout; it mustn't cost the
+      # login. Logged, because nothing visible goes wrong.
+      Rails.logger.error "Failed to record OIDC session mapping: #{e.message}"
+    end
+
+    def terminate_session
+      OidcSession.find_by(oidc_sid: session[:oidc_sid])&.destroy if session[:oidc_sid].present?
+      reset_session
+      @current_user = nil
+    end
+
+    # Has the provider ended this session from elsewhere (backchannel logout)?
+    # Only meaningful when it issued a sid.
+    def oidc_session_valid?
+      return true if session[:oidc_sid].blank?
+      return true if OidcSession.find_live(session[:oidc_sid])
+
+      Rails.logger.info "OIDC session ended by the provider: sid=#{session[:oidc_sid]}"
+      reset_session
+      false
+    end
+end

@@ -1,0 +1,15 @@
+<% content_for :title, "Sign in · Pedant" %>
+
+<div class="mx-auto max-w-sm">
+  <h1 class="text-2xl font-semibold">Sign in</h1>
+
+  <% if @provider %>
+    <p class="mt-2 text-sm text-stone-600">Pedant signs you in through your identity provider.</p>
+    <%= link_to "Sign in with #{@provider.name}", login_start_path, class: "btn mt-6", data: { turbo: false } %>
+  <% else %>
+    <p class="mt-2 text-sm text-stone-600">
+      Pedant isn't set up yet. The setup code is printed on the server's console.
+    </p>
+    <%= link_to "Set up Pedant", setup_path, class: "btn mt-6" %>
+  <% end %>
+</div>

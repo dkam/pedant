@@ -1,6 +1,12 @@
 ENV["RAILS_ENV"] ||= "test"
 require_relative "../config/environment"
 require "rails/test_help"
+require "webmock/minitest"
+
+Dir[File.expand_path("support/**/*.rb", __dir__)].each { |file| require file }
+
+# Tests never reach the network. Capybara's own server is local.
+WebMock.disable_net_connect!(allow_localhost: true)
 
 module ActiveSupport
   class TestCase
@@ -12,4 +18,22 @@ module ActiveSupport
 
     # Add more helper methods to be used by all tests here...
   end
+end
+
+class ActionDispatch::IntegrationTest
+  private
+    # A configured provider and a fake one answering for it.
+    def configure_provider
+      @provider = FakeOidcProvider.new.stub!
+      OidcProvider.create!(@provider.provider_attributes)
+    end
+
+    # The whole login flow, as the browser would drive it: /login/start sends
+    # us to the provider with a state, and the provider sends us back with it.
+    def log_in(**claims)
+      @provider.logs_in_as(**claims) if claims.any?
+      get login_start_url
+      state = Rack::Utils.parse_query(URI(response.location).query).fetch("state")
+      get auth_callback_url, params: { code: "auth-code", state: state }
+    end
 end
