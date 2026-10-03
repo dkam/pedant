@@ -54,6 +54,10 @@ without Gitea access. The issue remains the place for discussion.
 - [`learnings/docker.md`](learnings/docker.md): `docker inspect` returns
   environment values (secrets) in plaintext, and `docker ps --format json`
   doesn't.
+- [`learnings/doco-cd.md`](learnings/doco-cd.md): its Docker socket mount makes
+  it root on each host. Destroy and volume defaults differ by path, the API key
+  can do everything, run history is in memory, and its built-in MCP server
+  stays off. From its docs; not yet run.
 
 **Decisions**
 
