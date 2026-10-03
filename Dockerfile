@@ -1,15 +1,18 @@
 # syntax=docker/dockerfile:1
 # check=error=true
 
-# This Dockerfile is designed for production, not development. Use with Kamal or build'n'run by hand:
-# docker build -t pedant .
-# docker run -d -p 80:80 -e RAILS_MASTER_KEY=<value from config/master.key> --name pedant pedant
+# Production image, published to ghcr.io/dkam/pedant by .github/workflows/build.yml.
+# Deployed by doco-cd from booko-services, not Kamal. To build by hand:
+# docker build --build-arg GIT_SHA=$(git rev-parse HEAD) \
+#   --build-arg VERSION=$(ruby -e "require './config/version'; puts Pedant::VERSION") -t pedant .
 
 # For a containerized dev environment, see Dev Containers: https://guides.rubyonrails.org/getting_started_with_devcontainer.html
 
 # Make sure RUBY_VERSION matches the Ruby version in .ruby-version
 ARG RUBY_VERSION=4.0.7
 FROM docker.io/library/ruby:$RUBY_VERSION-slim AS base
+
+LABEL org.opencontainers.image.source=https://github.com/dkam/pedant
 
 # Rails app lives here
 WORKDIR /rails
@@ -54,11 +57,22 @@ RUN bundle exec bootsnap precompile -j 1 app/ lib/
 # Precompiling assets for production without requiring secret RAILS_MASTER_KEY
 RUN SECRET_KEY_BASE_DUMMY=1 ./bin/rails assets:precompile
 
-
-
+# The commit, read at boot by config/initializers/revision.rb. Declared here,
+# after FROM: an ARG is scoped to the stage that declares it, and one before the
+# FROM would silently ignore the --build-arg.
+ARG GIT_SHA=unknown
+RUN echo "${GIT_SHA}" > VERSION
 
 # Final stage for app image
 FROM base
+
+# Release and commit as labels, so a host can say what's running without
+# booting the app. These are the labels Pedant reads on every other container.
+# The ARGs are declared again because each stage has its own.
+ARG VERSION=unknown
+ARG GIT_SHA=unknown
+LABEL org.opencontainers.image.version=$VERSION \
+      org.opencontainers.image.revision=$GIT_SHA
 
 # Run and own only the runtime files as a non-root user for security
 RUN groupadd --system --gid 1000 rails && \
