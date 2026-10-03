@@ -12,10 +12,10 @@ Anything that stores raw `docker inspect` output stores the host's secrets.
 **`docker ps --format '{{json .}}'` doesn't include the environment.** Its
 fields are `Command, CreatedAt, HealthStatus, ID, Image, Labels, LocalVolumes,
 Mounts, Names, Networks, Platform, Ports, RunningFor, Size, State, Status`.
-`Labels` includes the labels inherited from the image, so the
+`Labels` includes the labels a container inherits from its image, so the
 `org.opencontainers.image.version` / `.revision` labels are available from
-`docker ps` alone. *(The inherited-labels part is unverified; check against an
-app built with the labels.)*
+`docker ps` alone. (Verified 2026-10-04 against Pedant's own image, which sets
+them in its Dockerfile.)
 
 **`docker inspect --format` selects fields on the host**, so fields left out
 never cross the SSH connection. Prefer
@@ -29,4 +29,9 @@ docker run -d --rm --name envtest -e API_TOKEN=s3cret busybox sleep 30
 docker inspect --format '{{json .Config.Env}}' envtest      # shows API_TOKEN=s3cret
 docker ps --filter name=envtest --format '{{json .}}'       # no Env field
 docker rm -f envtest
+
+# inherited image labels show in docker ps (any image with LABELs)
+docker run -d --rm --name labeltest --entrypoint sleep <labelled-image> 30
+docker ps --filter name=labeltest --format '{{.Labels}}'
+docker rm -f labeltest
 ```

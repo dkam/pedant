@@ -34,14 +34,23 @@ Two rules from #5 shape the data model, so keep them in mind from day one:
 - **Deleting data is never one click or one commit away.** Pedant never exposes
   an action that removes volumes.
 
-## Milestone 1: uptime checks, replacing Kuma (ADR 0004)
+## Milestone 1: replace Uptime Kuma (ADRs 0004, 0012)
 
 doco-cd isn't installed on any host yet, so nothing here may depend on its API.
+Kuma does two things, and Pedant replaces both. Seed both from Kuma's export
+(Pedant issue #1), which hasn't been done yet.
 
-- **Uptime checks:** HTTP checks on a schedule, storing up/down, when that last
-  changed, and how often it flaps. Seed the list from Kuma's current monitors.
-  Exporting them (the first step in #5) hasn't been done yet.
+- **Active checks:** HTTP (and TCP, TLS expiry) on a schedule, storing up/down,
+  when it last changed, and how often it flaps.
+- **Push monitors:** jobs call `/api/push/<token>?status=up|down&msg=…&ping=…`,
+  Kuma's own URL shape, so moving a job means changing only the hostname in
+  its curl. Silence past the interval means missed.
+- **Splat's check-ins:** splat keeps the Rails apps' own job check-ins. Pedant
+  only shows their state.
+- **Pedant's own outages:**
   - Pedant's own connection failing is "unknown", not "everything is down".
+  - After Pedant is down, a push monitor gets one full interval before it can
+    be marked missed.
   - Pedant sends a heartbeat so its own silence raises an alarm (ADR 0008).
 - **Fleet inventory over SSH: optional, undecided.** If built, it uses
   `docker ps` and field-selected `docker inspect`. **Never run a bare
@@ -77,12 +86,9 @@ Matches the sibling apps in `../` (splat, spool, clinch):
   no Phlex: plain ERB views.
 - Solid Cache, Solid Cable
 - Thruster in front of Puma in the container
-- **Jobs: undecided, Solid Queue or tuber** *(open)*. `../tuberq` holds tuber
-  (the server and the gem), and `../spool` runs Active Job on tuber with
-  `lib/active_job/queue_adapters/tuber_adapter.rb`, so copy from there if tuber
-  is chosen. Note that uptime checks are mostly a *scheduling* problem: Solid
-  Queue has recurring tasks (`config/recurring.yml`) built in. With tuber,
-  decide what fires the checks on time before choosing.
+- **Jobs: Solid Queue** (ADR 0010), using recurring tasks in
+  `config/recurring.yml`. Checks get their own queue, so they never wait
+  behind slow work.
 
 Not Postgres, not Redis, not Sidekiq.
 
@@ -114,11 +120,13 @@ Not Postgres, not Redis, not Sidekiq.
 
 - **Host:** off the fleet (not hetz01 or misc01), on the tailnet only. Which
   machine doesn't matter to the code (ADR 0008).
-- **Login:** OIDC only, ported from `../spool` (`docs/auth.md`,
-  `app/controllers/oidc_auth_controller.rb`). No passwords. The first user
-  claims the instance with a setup code printed to the console, ported from
-  `../kith` (`app/models/setup.rb`). After that, only known users sign in
-  (ADR 0009).
+- **Login:** OIDC only. The login flow is ported from `../spool`
+  (`docs/auth.md`, `app/controllers/oidc_auth_controller.rb`). No passwords.
+  - The first user claims the instance with a setup code printed to the
+    console, ported from `../kith` (`app/models/setup.rb`). After that, only
+    known users sign in (ADR 0009).
+  - The provider (issuer, client ID, secret) is entered in `/setup` and stored
+    in the database with the secret encrypted, not in env variables (ADR 0011).
 - **SSH (if the inventory is built):** read-only commands only. Pedant never
   runs anything on a host that changes state over SSH.
 

@@ -53,7 +53,7 @@ without Gitea access. The issue remains the place for discussion.
   editing a value needs a private key, and values are authenticated.
 - [`learnings/docker.md`](learnings/docker.md): `docker inspect` returns
   environment values (secrets) in plaintext, and `docker ps --format json`
-  doesn't.
+  doesn't, and it does show labels inherited from the image.
 - [`learnings/doco-cd.md`](learnings/doco-cd.md): its Docker socket mount makes
   it root on each host. Destroy and volume defaults differ by path, the API key
   can do everything, run history is in memory, and its built-in MCP server
@@ -70,8 +70,8 @@ without Gitea access. The issue remains the place for discussion.
   holds only what was observed or worked out.
 - [`decisions/0003-stack.md`](decisions/0003-stack.md) is the stack: Rails 8.1,
   SQLite, Tailwind, Stimulus, importmaps, Solid Cache and Solid Cable, matching
-  the sibling apps. Code and CI are on GitHub, with images on ghcr.io. The job
-  backend is still open.
+  the sibling apps. Code and CI are on GitHub, with images on ghcr.io. Jobs per
+  ADR 0010.
 - [`decisions/0004-milestone-1-without-doco-cd.md`](decisions/0004-milestone-1-without-doco-cd.md)
   makes milestone 1 uptime checks, replacing Kuma, without doco-cd. The SSH
   inventory is optional and undecided.
@@ -91,3 +91,12 @@ without Gitea access. The issue remains the place for discussion.
 - [`decisions/0009-oidc-login-claimed-by-setup-code.md`](decisions/0009-oidc-login-claimed-by-setup-code.md)
   makes login OIDC only (spool's code). The first user claims Pedant with a
   console setup code (kith's), and after that only known users sign in.
+- [`decisions/0010-solid-queue.md`](decisions/0010-solid-queue.md) picks Solid
+  Queue over tuber: recurring tasks are built in, and a monitor should depend
+  on as little as possible.
+- [`decisions/0011-oidc-configured-in-app.md`](decisions/0011-oidc-configured-in-app.md)
+  enters the OIDC provider in `/setup` and stores it in the database with the
+  secret encrypted, not in env variables.
+- [`decisions/0012-push-monitors.md`](decisions/0012-push-monitors.md) has
+  Pedant take over Kuma's push monitors on Kuma's own URL shape, so migrating
+  a job is a hostname change. Splat keeps the Rails apps' check-ins.
