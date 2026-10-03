@@ -45,6 +45,15 @@ without Gitea access. The issue remains the place for discussion.
 
 ## Index
 
+**Learnings**
+
+- [`learnings/sops.md`](learnings/sops.md): with SOPS dotenv files, variable
+  names and recipients are plaintext. Encrypting needs only public keys,
+  editing a value needs a private key, and values are authenticated.
+- [`learnings/docker.md`](learnings/docker.md): `docker inspect` returns
+  environment values (secrets) in plaintext, and `docker ps --format json`
+  doesn't.
+
 **Decisions**
 
 - [`decisions/0001-doco-cd-deploys-pedant-watches.md`](decisions/0001-doco-cd-deploys-pedant-watches.md)
@@ -66,3 +75,7 @@ without Gitea access. The issue remains the place for discussion.
   user couldn't see the private Gitea repo.
 - [`decisions/0006-issues-back-on-gitea.md`](decisions/0006-issues-back-on-gitea.md)
   moves issues back to Gitea, now that the Claude user is a collaborator.
+- [`decisions/0007-pedant-never-decrypts.md`](decisions/0007-pedant-never-decrypts.md)
+  says Pedant holds no age private key, shows secret changes by variable name
+  only, doesn't edit secrets, and never fetches environment values from
+  `docker inspect`.

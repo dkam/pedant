@@ -46,7 +46,9 @@ Milestone 1 is the two parts of Pedant that are useful today:
 2. **Fleet inventory over SSH**: for each host, `docker ps` + `docker inspect`
    gives container, image, tag, and the `org.opencontainers.image.version` /
    `.revision` labels. This is #5's `bin/fleet` idea folded into the app.
-   Hosts are declared by hand for now (hetz01, misc01).
+   Hosts are declared by hand for now (hetz01, misc01). **Never run a bare
+   `docker inspect` or read `.Config.Env`, because it returns secrets in
+   plaintext.** Select fields on the host with `--format` (ADR 0007).
 
 Later milestones, once the doco-cd trial on misc01 exists: read doco-cd's API,
 compare desired state (`.doco-cd.<host>.yml`) with the running state and flag
