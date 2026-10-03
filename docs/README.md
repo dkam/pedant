@@ -22,8 +22,8 @@ gets a new ADR that links back. A fact the ADR got wrong gets a dated
 **Is it an external spec we didn't write (doco-cd's API, Gitea's webhooks)?** →
 `reference/`.
 
-**Is it a task?** → The issue tracker, not here. Pedant's issues are GitHub
-issues on `dkam/pedant` (ADR 0005).
+**Is it a task?** → The issue tracker, not here. Pedant's issues are on Gitea
+(`dkam/pedant`), not GitHub (ADR 0006).
 
 ## Layout
 
@@ -56,11 +56,13 @@ without Gitea access. The issue remains the place for discussion.
   holds only what was observed or worked out.
 - [`decisions/0003-stack.md`](decisions/0003-stack.md) is the stack: Rails 8.1,
   SQLite, Tailwind, Stimulus, importmaps, Solid Cache and Solid Cable, matching
-  the sibling apps. Code and CI are on GitHub, with images on ghcr.io, and
-  issues on Gitea. The job backend is still open.
+  the sibling apps. Code and CI are on GitHub, with images on ghcr.io. The job
+  backend is still open.
 - [`decisions/0004-milestone-1-without-doco-cd.md`](decisions/0004-milestone-1-without-doco-cd.md)
   (**Proposed**) makes milestone 1 uptime checks plus an SSH inventory, because
   doco-cd isn't installed anywhere yet.
 - [`decisions/0005-issues-on-github.md`](decisions/0005-issues-on-github.md)
-  moves Pedant's issues to GitHub, reversing ADR 0003's Gitea split. The Claude
-  user can't see the private Gitea repo.
+  (**superseded by 0006**) moved Pedant's issues to GitHub, because the Claude
+  user couldn't see the private Gitea repo.
+- [`decisions/0006-issues-back-on-gitea.md`](decisions/0006-issues-back-on-gitea.md)
+  moves issues back to Gitea, now that the Claude user is a collaborator.

@@ -99,14 +99,16 @@ Not Postgres, not Redis, not Sidekiq.
 - The image carries `org.opencontainers.image.version` and `.revision` labels.
   Pedant reads these labels on other apps, so it should carry them itself.
 - `GIT_SHA` build arg, read at boot by `config/initializers/revision.rb`.
-- **Code, CI and issues are on GitHub** at `github.com/dkam/pedant` (git remote
-  `github`).
-  - CI is GitHub Actions, and images go to `ghcr.io/dkam/pedant`.
+- **Code and CI are on GitHub; issues are on Gitea** (ADR 0006). It's the same
+  split as clinch.
+  - The code is at `github.com/dkam/pedant` (git remote `github`). CI is GitHub
+    Actions, and images go to `ghcr.io/dkam/pedant`.
   - Copy splat's `.github/workflows/build.yml` and `ci.yml`, not its `bin/build`,
     which pushes to `reg.tbdb.info` and isn't splat's real release path.
-  - Pedant's own issues are GitHub issues; use `gh` (ADR 0005).
+  - Pedant's issues are in Gitea at `dkam/pedant`. Use
+    `tea --login booko --repo dkam/pedant`. Don't use GitHub issues.
   - The design discussion (Booko/booko-services#5) and the booko-services repo
-    that doco-cd will watch stay on Gitea, and are read with `tea`.
+    that doco-cd will watch are on Gitea too.
 
 ## Where it runs and who can log in *(open)*
 

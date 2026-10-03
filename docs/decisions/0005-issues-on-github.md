@@ -1,5 +1,7 @@
 # 0005: Pedant's issues are on GitHub
 
+> **SUPERSEDED** by [0006](0006-issues-back-on-gitea.md) on 2026-10-04: the Claude user was made a collaborator on the Gitea repo, so issues stay on Gitea.
+
 **Date:** 2026-10-04
 **Status:** Accepted
 **Reverses:** the "Issues are on Gitea" part of ADR 0003
