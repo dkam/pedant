@@ -156,7 +156,92 @@ class SetupControllerTest < ActionDispatch::IntegrationTest
     assert_redirected_to root_url
   end
 
+  test "the setup page offers a password and OIDC" do
+    get setup_url
+
+    assert_select "form[action=?]", setup_password_path
+    assert_select "form[action=?]", setup_path
+  end
+
+  test "the right code and a good password make the owner and sign them in" do
+    assert_difference -> { User.count }, 1 do
+      post setup_password_url, params: password_params
+    end
+
+    assert_redirected_to root_url
+    assert User.sole.authenticate("a long enough password")
+    assert_equal :password, SignInMethod.current
+
+    get root_url
+    assert_response :success
+  end
+
+  test "setup closes behind a password owner" do
+    post setup_password_url, params: password_params
+
+    get setup_url
+    assert_response :not_found
+
+    assert_no_difference -> { User.count } do
+      post setup_password_url, params: password_params(password: "another long password")
+    end
+    assert_response :not_found
+  end
+
+  test "a wrong code sets no password" do
+    assert_no_difference -> { User.count } do
+      post setup_password_url, params: password_params(code: "ZZZZ-ZZZZ-ZZZZ")
+    end
+
+    assert_response :unprocessable_content
+    assert_select ".alert", /doesn't match the one on the server's console/
+  end
+
+  test "a short or mismatched password sets nothing" do
+    post setup_password_url, params: password_params(password: "short", confirmation: "short")
+    assert_response :unprocessable_content
+
+    post setup_password_url, params: password_params(confirmation: "not the same at all")
+    assert_response :unprocessable_content
+
+    post setup_password_url, params: password_params(password: "", confirmation: "")
+    assert_response :unprocessable_content
+
+    assert_equal 0, User.count
+  end
+
+  test "after resetting OIDC, choosing a password keeps the same owner" do
+    post setup_url, params: setup_params
+    log_in(sub: "owner-sub")
+    delete logout_url
+    OidcProvider.delete_all # what rake pedant:reset_oidc does
+
+    assert_no_difference -> { User.count } do
+      post setup_password_url, params: password_params
+    end
+
+    assert User.sole.authenticate("a long enough password")
+    assert_equal :password, SignInMethod.current
+  end
+
+  test "after resetting OIDC, a blank password doesn't leave the owner without one" do
+    post setup_url, params: setup_params
+    log_in(sub: "owner-sub")
+    delete logout_url
+    OidcProvider.delete_all
+
+    post setup_password_url, params: password_params(password: "", confirmation: "")
+
+    assert_response :unprocessable_content
+    assert_nil User.sole.password_digest
+    assert Setup.open?
+  end
+
   private
+    def password_params(code: Setup.code, password: "a long enough password", confirmation: password)
+      { code: code, user: { password: password, password_confirmation: confirmation } }
+    end
+
     def setup_params(code: Setup.code, provider: {})
       { code: code, oidc_provider: @provider.provider_attributes.merge(provider) }
     end

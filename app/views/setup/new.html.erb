@@ -3,65 +3,34 @@
 <div class="mx-auto max-w-md">
   <h1 class="text-2xl font-semibold">Set up Pedant</h1>
   <p class="mt-2 text-sm text-stone-600">
-    Enter the code printed on the server's console, then your OIDC provider's
-    details. Pedant sends you to the provider to sign in, and the account you
-    sign in with becomes the owner.
+    Enter the code printed on the server's console, and choose how you'll sign
+    in: a password, or your OIDC provider. Only the one you choose will work.
+    You can switch from a password to OIDC later in settings.
   </p>
 
-  <div class="mt-6 rounded-md border border-stone-200 bg-white px-4 py-3 text-sm">
-    <p class="text-stone-600">Register this redirect URI with the provider:</p>
-    <code class="mt-1 block break-all font-mono text-stone-900"><%= auth_callback_url %></code>
-    <p class="mt-2 text-stone-600">For backchannel logout, if the provider offers it:</p>
-    <code class="mt-1 block break-all font-mono text-stone-900"><%= oidc_logout_url %></code>
-  </div>
+  <section class="mt-8 rounded-lg border border-stone-200 bg-white p-6">
+    <h2 class="text-lg font-semibold">With a password</h2>
+    <p class="mt-1 text-sm text-stone-600">One owner account, nothing else to run.</p>
 
-  <%= form_with model: @provider, url: setup_path, method: :post, class: "mt-8 space-y-5" do |form| %>
-    <% if @provider.errors.any? %>
-      <div class="alert">
-        <ul class="list-disc space-y-1 pl-4">
-          <% @provider.errors.full_messages.each do |message| %>
-            <li><%= message %></li>
-          <% end %>
-        </ul>
-      </div>
+    <%= form_with model: @owner, url: setup_password_path, method: :post, class: "mt-5 space-y-5" do |form| %>
+      <%= render "shared/errors", record: @owner %>
+      <%= render "setup/code_field", id: "password_code" %>
+      <%= render "shared/new_password_fields", form: form, label: "Password" %>
+      <%= form.submit "Set password and sign in", class: "btn" %>
     <% end %>
+  </section>
 
-    <div>
-      <%= label_tag :code, "Setup code", class: "label" %>
-      <%= text_field_tag :code, nil, required: true, autofocus: true, autocomplete: "off",
-            spellcheck: false, autocapitalize: "characters", class: "field font-mono uppercase tracking-widest" %>
-      <p class="hint">Twelve characters in three groups. Case and dashes don't matter.</p>
-    </div>
+  <section class="mt-6 rounded-lg border border-stone-200 bg-white p-6">
+    <h2 class="text-lg font-semibold">With OIDC</h2>
+    <p class="mt-1 text-sm text-stone-600">
+      Pedant sends you to the provider to sign in, and that account becomes the owner.
+    </p>
 
-    <div>
-      <%= form.label :issuer, "Issuer URL", class: "label" %>
-      <%= form.url_field :issuer, required: true, placeholder: "https://auth.example.com", class: "field" %>
-      <p class="hint">Pedant fetches its discovery document before saving.</p>
-    </div>
-
-    <div>
-      <%= form.label :client_id, "Client ID", class: "label" %>
-      <%= form.text_field :client_id, required: true, autocomplete: "off", class: "field" %>
-    </div>
-
-    <div>
-      <%= form.label :client_secret, "Client secret", class: "label" %>
-      <%= form.password_field :client_secret, value: nil, required: !@provider.persisted?, autocomplete: "off", class: "field" %>
-      <p class="hint">
-        <% if @provider.persisted? %>
-          A secret is saved. Leave this blank to keep it.
-        <% else %>
-          Stored encrypted, and never shown again.
-        <% end %>
-      </p>
-    </div>
-
-    <div>
-      <%= form.label :name, "Provider name", class: "label" %>
-      <%= form.text_field :name, required: true, class: "field" %>
-      <p class="hint">Shown on the sign-in button.</p>
-    </div>
-
-    <%= form.submit "Save and sign in", class: "btn" %>
-  <% end %>
+    <%= form_with model: @provider, url: setup_path, method: :post, class: "mt-5 space-y-5" do |form| %>
+      <%= render "shared/errors", record: @provider %>
+      <%= render "setup/code_field", id: "oidc_code" %>
+      <%= render "shared/provider_fields", form: form, provider: @provider %>
+      <%= form.submit "Save and sign in", class: "btn" %>
+    <% end %>
+  </section>
 </div>

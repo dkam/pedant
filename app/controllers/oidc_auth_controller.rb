@@ -4,8 +4,8 @@
 #
 # Two differences from spool. The provider comes from the database (ADR 0011),
 # not env variables. And nobody is provisioned by logging in: a known identity
-# (issuer + subject) signs in, the owner is created once by setup, and anyone
-# else is refused (ADR 0009).
+# (issuer + subject) signs in, the owner is created once by setup or linked
+# when switching from a password (ADR 0015), and anyone else is refused (ADR 0009).
 class OidcAuthController < ApplicationController
   allow_unauthenticated_access only: %i[ login start callback backchannel_logout ]
   skip_forgery_protection only: :backchannel_logout
@@ -22,7 +22,6 @@ class OidcAuthController < ApplicationController
   def login
     return redirect_to(root_path) if authenticated?
 
-    @provider = OidcProvider.current
     render formats: :html
   end
 
@@ -47,6 +46,7 @@ class OidcAuthController < ApplicationController
     expected_state = session.delete(:auth_state)
     verifier = session.delete(:pkce_verifier)
     setup_claimed_at = session.delete(:setup_claimed_at)
+    linking = { user_id: session.delete(:linking_user_id), started_at: session.delete(:linking_started_at) }
 
     unless verifier.present? && valid_state?(params[:state], expected_state)
       return refuse("That sign-in didn't match the one we started. Please try again.", log: "OIDC state mismatch")
@@ -59,7 +59,7 @@ class OidcAuthController < ApplicationController
     claims = verified_claims(id_token)
     return refuse("The provider didn't say who you are.") if claims["sub"].blank?
 
-    user = User.identified_by(claims) || claim_instance(claims, setup_claimed_at)
+    user = User.identified_by(claims) || link_identity(claims, linking) || claim_instance(claims, setup_claimed_at)
     unless user
       who = claims["email"].presence || claims["sub"]
       return refuse("#{who} isn't a Pedant user.", log: "Refused unknown identity iss=#{claims["iss"]} sub=#{claims["sub"]}")
@@ -109,6 +109,19 @@ class OidcAuthController < ApplicationController
 
     def oidc_client
       @oidc_client ||= provider.client(redirect_uri: auth_callback_url)
+    end
+
+    # Switching from a password (SettingsController#link_oidc): the identity
+    # that comes back joins the signed-in owner who started the switch, within
+    # the same window as a setup claim.
+    def link_identity(claims, linking)
+      return unless linking[:user_id] && linking[:started_at] &&
+        Time.at(linking[:started_at]) > Setup::CLAIM_WINDOW.ago && current_user&.id == linking[:user_id]
+
+      current_user.tap do |user|
+        user.link_identity!(claims)
+        Rails.logger.info "Linked iss=#{claims["iss"]} sub=#{claims["sub"]} to user #{user.id}; password removed"
+      end
     end
 
     # The owner, created once: only by the browser that entered the setup code,

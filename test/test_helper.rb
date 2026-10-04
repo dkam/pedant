@@ -28,6 +28,14 @@ class ActionDispatch::IntegrationTest
       OidcProvider.create!(@provider.provider_attributes)
     end
 
+    def create_password_owner(password = "a long enough password")
+      User.create!(password: password, password_confirmation: password)
+    end
+
+    def sign_in_with_password(password = "a long enough password")
+      post login_url, params: { password: password }
+    end
+
     # The whole login flow, as the browser would drive it: /login/start sends
     # us to the provider with a state, and the provider sends us back with it.
     def log_in(**claims)

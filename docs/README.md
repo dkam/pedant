@@ -108,3 +108,7 @@ without Gitea access. The issue remains the place for discussion.
   rejects Dockhand for its BSL licence, and lists ideas worth taking from it
   (written fresh, not copied): an outbound-only agent, scoped API tokens, an
   activity log, disk alerts, CVE scans in the PR check, adopting stacks.
+- [`decisions/0015-password-or-oidc.md`](decisions/0015-password-or-oidc.md)
+  lets setup choose a password for one owner, or OIDC, and only the chosen one
+  works. Switching from a password to OIDC is in settings; the console resets
+  either.

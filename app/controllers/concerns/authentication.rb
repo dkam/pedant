@@ -1,5 +1,6 @@
-# Sessions for OIDC logins, ported from spool. A session holds the user's id;
-# a provider `sid` is mapped in OidcSession so backchannel logout can end it.
+# Sessions, for both sign-in methods (ADR 0015). Ported from spool. A session
+# holds the user's id and session token; for OIDC, the provider's `sid` is
+# mapped in OidcSession so backchannel logout can end it.
 module Authentication
   extend ActiveSupport::Concern
 
@@ -22,7 +23,18 @@ module Authentication
     def current_user
       return @current_user if defined?(@current_user)
 
-      @current_user = session[:user_id] && oidc_session_valid? ? User.find_by(id: session[:user_id]) : nil
+      @current_user = (session_user if session[:user_id] && oidc_session_valid?)
+    end
+
+    # The session carries the user's session token from sign-in. Rotating it
+    # (a password change, a console reset) ends every session that has the old one.
+    def session_user
+      user = User.find_by(id: session[:user_id])
+      return user if user&.session_token.present? &&
+        ActiveSupport::SecurityUtils.secure_compare(session[:session_token].to_s, user.session_token)
+
+      reset_session
+      nil
     end
 
     def require_authentication
@@ -37,6 +49,7 @@ module Authentication
       # be reused after it.
       reset_session
       session[:user_id] = user.id
+      session[:session_token] = user.session_token
       session[:oidc_sid] = sid if sid.present?
       @current_user = user
 

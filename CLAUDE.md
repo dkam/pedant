@@ -122,13 +122,14 @@ Not Postgres, not Redis, not Sidekiq.
 
 - **Host:** off the fleet (not hetz01 or misc01), on the tailnet only. Which
   machine doesn't matter to the code (ADR 0008).
-- **Login:** OIDC only. The login flow is ported from `../spool`
-  (`docs/auth.md`, `app/controllers/oidc_auth_controller.rb`). No passwords.
-  - The first user claims the instance with a setup code printed to the
-    console, ported from `../kith` (`app/models/setup.rb`). After that, only
-    known users sign in (ADR 0009).
-  - The provider (issuer, client ID, secret) is entered in `/setup` and stored
-    in the database with the secret encrypted, not in env variables (ADR 0011).
+- **Login:** a password for one owner, or OIDC, chosen at setup. Only the
+  chosen one works (ADR 0015). No sign-up, no reset by email.
+  - The owner claims the instance with a setup code printed to the console,
+    ported from `../kith` (`app/models/setup.rb`, ADR 0009).
+  - OIDC is ported from `../spool` (`docs/auth.md`). The provider is entered
+    in the app, with the secret encrypted, not in env variables (ADR 0011).
+  - The console is the way back in: `pedant:reset_password`,
+    `pedant:reset_oidc`.
 - **SSH (if the inventory is built):** read-only commands only. Pedant never
   runs anything on a host that changes state over SSH.
 
@@ -136,8 +137,8 @@ Not Postgres, not Redis, not Sidekiq.
 
 `bin/dev` serves on **port 3036** (clinch is on 3035). Clinch's redirect URI for
 a local Pedant is `http://localhost:3036/auth/callback`. While setup is open,
-boot prints the setup code; `bin/rails pedant:setup_code` prints it again, and
-`bin/rails pedant:reset_oidc` clears the provider and reopens setup.
+starting the server prints the setup code; `bin/rails pedant:setup_code` prints it again, and
+`pedant:reset_password` and `pedant:reset_oidc` reopen it.
 
 ## Not available on this machine
 

@@ -1,0 +1,35 @@
+<div class="rounded-md border border-stone-200 bg-stone-50 px-4 py-3 text-sm">
+  <p class="text-stone-600">Register this redirect URI with the provider:</p>
+  <code class="mt-1 block break-all font-mono text-stone-900"><%= auth_callback_url %></code>
+  <p class="mt-2 text-stone-600">For backchannel logout, if the provider offers it:</p>
+  <code class="mt-1 block break-all font-mono text-stone-900"><%= oidc_logout_url %></code>
+</div>
+
+<div>
+  <%= form.label :issuer, "Issuer URL", class: "label" %>
+  <%= form.url_field :issuer, required: true, placeholder: "https://auth.example.com", class: "field" %>
+  <p class="hint">Pedant fetches its discovery document before saving.</p>
+</div>
+
+<div>
+  <%= form.label :client_id, "Client ID", class: "label" %>
+  <%= form.text_field :client_id, required: true, autocomplete: "off", class: "field" %>
+</div>
+
+<div>
+  <%= form.label :client_secret, "Client secret", class: "label" %>
+  <%= form.password_field :client_secret, value: nil, required: !provider.persisted?, autocomplete: "off", class: "field" %>
+  <p class="hint">
+    <% if provider.persisted? %>
+      A secret is saved. Leave this blank to keep it.
+    <% else %>
+      Stored encrypted, and never shown again.
+    <% end %>
+  </p>
+</div>
+
+<div>
+  <%= form.label :name, "Provider name", class: "label" %>
+  <%= form.text_field :name, required: true, class: "field" %>
+  <p class="hint">Shown on the sign-in button.</p>
+</div>

@@ -5,9 +5,9 @@
 # (ADR 0009).
 #
 # The code is derived from secret_key_base rather than stored, so every
-# process agrees on it and it's never written down. Setup is open while
-# there's no provider or nobody has signed in; `bin/rails pedant:reset_oidc`
-# reopens it by clearing the provider (ADR 0011).
+# process agrees on it and it's never written down. Setup offers a password or
+# OIDC (ADR 0015), and closes once the owner can sign in. The console reopens
+# it: `bin/rails pedant:reset_password` or `pedant:reset_oidc`.
 class Setup
   # No 0/O/1/I: this gets read off a terminal and typed. 32 divides 256
   # evenly, so folding a random byte into it stays uniform.
@@ -20,8 +20,14 @@ class Setup
   CLAIM_WINDOW = 15.minutes
 
   class << self
+    # Open while nobody can sign in: no method yet, or an OIDC provider that
+    # no identity has signed in through.
     def open?
-      !OidcProvider.configured? || !User.exists?
+      case SignInMethod.current
+      when nil then true
+      when :oidc then !User.with_oidc.exists?
+      else false
+      end
     end
 
     def code

@@ -5,14 +5,22 @@ Rails.application.routes.draw do
   # Claiming the instance with the console's setup code. 404 once claimed: see Setup.
   get  "setup", to: "setup#new"
   post "setup", to: "setup#create"
+  post "setup/password", to: "setup#create_password", as: :setup_password
 
-  # OIDC login (OidcAuthController). Backchannel logout is the provider's
+  # Sign-in: a password (PasswordSessionsController) or OIDC (OidcAuthController),
+  # whichever setup chose (ADR 0015). Backchannel logout is the provider's
   # server-to-server POST.
   get    "login",         to: "oidc_auth#login",  as: :login
+  post   "login",         to: "password_sessions#create"
   get    "login/start",   to: "oidc_auth#start",  as: :login_start
   get    "auth/callback", to: "oidc_auth#callback", as: :auth_callback
   delete "logout",        to: "oidc_auth#logout", as: :logout
   post   "oidc/logout",   to: "oidc_auth#backchannel_logout", as: :oidc_logout
+
+  # The owner's sign-in settings: change the password, or switch to OIDC.
+  get   "settings",          to: "settings#show",            as: :settings
+  patch "settings/password", to: "settings#update_password", as: :settings_password
+  post  "settings/oidc",     to: "settings#link_oidc",       as: :settings_oidc
 
   root "dashboard#show"
 end

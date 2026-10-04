@@ -1,0 +1,6 @@
+<div>
+  <%= label_tag id, "Setup code", class: "label" %>
+  <%= text_field_tag :code, nil, id: id, required: true, autocomplete: "off",
+        spellcheck: false, autocapitalize: "characters", class: "field font-mono uppercase tracking-widest" %>
+  <p class="hint">Twelve characters in three groups. Case and dashes don't matter.</p>
+</div>

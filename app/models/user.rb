@@ -1,25 +1,63 @@
-# Someone who can sign in. There's no sign-up: the owner is created by setup
-# (see Setup), and nobody else exists until there's a way to add them.
+# Someone who can sign in: today, only the owner. There's no sign-up; setup
+# creates the owner (see Setup).
 #
-# Identity is the provider's issuer plus subject, never the email: a provider
-# can change someone's email, and the same subject from a different provider
-# is a different person (ADR 0009).
+# A user signs in with a password or an OIDC identity (ADR 0015). The identity
+# is the provider's issuer plus subject, never the email: a provider can change
+# someone's email, and the same subject from another provider is a different
+# person (ADR 0009).
 class User < ApplicationRecord
+  # bcrypt reads only the first 72 bytes; anything longer would be silently
+  # truncated, so refuse it instead.
+  PASSWORD_LENGTH = 12..72
+
+  has_secure_password validations: false
   has_many :oidc_sessions, dependent: :delete_all
 
-  validates :oidc_issuer, :oidc_sub, presence: true
-  validates :oidc_sub, uniqueness: { scope: :oidc_issuer }
+  scope :with_password, -> { where.not(password_digest: nil) }
+  scope :with_oidc, -> { where.not(oidc_sub: nil) }
+
+  validates :password, length: { in: PASSWORD_LENGTH }, confirmation: true, allow_nil: true
+  validates :oidc_sub, uniqueness: { scope: :oidc_issuer }, allow_nil: true
+  validate :can_sign_in
+
+  before_create { self.session_token ||= self.class.new_session_token }
 
   def self.identified_by(claims)
-    find_by(oidc_issuer: claims["iss"], oidc_sub: claims["sub"])
+    find_by(oidc_issuer: claims["iss"], oidc_sub: claims["sub"]) if claims["iss"].present? && claims["sub"].present?
   end
 
-  # Keep what the provider says about them current, writing only on a change.
+  def self.new_session_token = SecureRandom.base58(32)
+
+  # Keep what the provider says about them current.
   def refresh_from(claims)
     update!(email: claims["email"].presence || email, name: claims["name"].presence || name)
   end
 
-  def display_name
-    name.presence || email.presence || oidc_sub
+  # Ends every session, including the one calling it; see Authentication.
+  def rotate_session_token!
+    update_columns(session_token: self.class.new_session_token, updated_at: Time.current)
   end
+
+  # From the console (pedant:reset_password). Without a provider this reopens
+  # setup, so the code sets a new password.
+  def reset_password!
+    update_columns(password_digest: nil, session_token: self.class.new_session_token, updated_at: Time.current)
+  end
+
+  # From the provider's callback while switching from a password to OIDC.
+  def link_identity!(claims)
+    update!(oidc_issuer: claims["iss"], oidc_sub: claims["sub"], password_digest: nil,
+      session_token: self.class.new_session_token)
+  end
+
+  def display_name
+    name.presence || email.presence || (oidc_sub ? oidc_sub : "Owner")
+  end
+
+  private
+    def can_sign_in
+      return if password_digest.present? || (oidc_issuer.present? && oidc_sub.present?)
+
+      errors.add(:password, "can't be blank")
+    end
 end
