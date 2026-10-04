@@ -7,7 +7,7 @@ class PedantRakeTest < ActiveSupport::TestCase
   end
 
   test "reset_password removes the password, signs out, and reopens setup" do
-    owner = User.create!(password: "a long enough password", password_confirmation: "a long enough password")
+    owner = User.create!(email: "dan@example.com", password: "a long enough password", password_confirmation: "a long enough password")
     token = owner.session_token
 
     output = run_task("pedant:reset_password")

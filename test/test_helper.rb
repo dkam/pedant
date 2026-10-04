@@ -28,12 +28,12 @@ class ActionDispatch::IntegrationTest
       OidcProvider.create!(@provider.provider_attributes)
     end
 
-    def create_password_owner(password = "a long enough password")
-      User.create!(password: password, password_confirmation: password)
+    def create_password_owner(password = "a long enough password", email: "dan@example.com")
+      User.create!(email: email, password: password, password_confirmation: password)
     end
 
-    def sign_in_with_password(password = "a long enough password")
-      post login_url, params: { password: password }
+    def sign_in_with_password(password = "a long enough password", email: "dan@example.com")
+      post login_url, params: { email: email, password: password }
     end
 
     # The whole login flow, as the browser would drive it: /login/start sends

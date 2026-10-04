@@ -176,6 +176,36 @@ class SetupControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
   end
 
+  test "a password owner needs a valid email" do
+    post setup_password_url, params: password_params(email: "")
+    assert_response :unprocessable_content
+
+    post setup_password_url, params: password_params(email: "not an email")
+    assert_response :unprocessable_content
+
+    assert_equal 0, User.count
+  end
+
+  test "the password owner's email is what they sign in with" do
+    post setup_password_url, params: password_params(email: "Dan@Example.com")
+    delete logout_url
+
+    post login_url, params: { email: "dan@example.com", password: "a long enough password" }
+
+    assert_redirected_to root_url
+  end
+
+  test "after resetting OIDC, the password form starts with the email the provider gave" do
+    post setup_url, params: setup_params
+    log_in(sub: "owner-sub", email: "dan@example.com")
+    delete logout_url
+    OidcProvider.delete_all
+
+    get setup_url
+
+    assert_select "input[name=?][value=?]", "user[email]", "dan@example.com"
+  end
+
   test "setup closes behind a password owner" do
     post setup_password_url, params: password_params
 
@@ -238,8 +268,8 @@ class SetupControllerTest < ActionDispatch::IntegrationTest
   end
 
   private
-    def password_params(code: Setup.code, password: "a long enough password", confirmation: password)
-      { code: code, user: { password: password, password_confirmation: confirmation } }
+    def password_params(code: Setup.code, email: "dan@example.com", password: "a long enough password", confirmation: password)
+      { code: code, user: { email: email, password: password, password_confirmation: confirmation } }
     end
 
     def setup_params(code: Setup.code, provider: {})

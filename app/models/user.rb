@@ -16,6 +16,10 @@ class User < ApplicationRecord
   scope :with_password, -> { where.not(password_digest: nil) }
   scope :with_oidc, -> { where.not(oidc_sub: nil) }
 
+  normalizes :email, with: ->(email) { email.strip.downcase }
+
+  # A password user signs in with their email; an OIDC user's comes from the provider.
+  validates :email, presence: true, format: { with: URI::MailTo::EMAIL_REGEXP }, if: :password_digest?
   validates :password, length: { in: PASSWORD_LENGTH }, confirmation: true, allow_nil: true
   validates :oidc_sub, uniqueness: { scope: :oidc_issuer }, allow_nil: true
   validate :can_sign_in

@@ -17,8 +17,9 @@ Rails.application.routes.draw do
   delete "logout",        to: "oidc_auth#logout", as: :logout
   post   "oidc/logout",   to: "oidc_auth#backchannel_logout", as: :oidc_logout
 
-  # The owner's sign-in settings: change the password, or switch to OIDC.
+  # The owner's sign-in settings: change the email or password, or switch to OIDC.
   get   "settings",          to: "settings#show",            as: :settings
+  patch "settings/email",    to: "settings#update_email",    as: :settings_email
   patch "settings/password", to: "settings#update_password", as: :settings_password
   post  "settings/oidc",     to: "settings#link_oidc",       as: :settings_oidc
 

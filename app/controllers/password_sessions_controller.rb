@@ -1,4 +1,4 @@
-# Signing in with the owner's password (ADR 0015). Only while a password is the
+# Signing in with the owner's email and password (ADR 0015). Only while a password is the
 # sign-in method: once OIDC is in use, this refuses even a correct password.
 class PasswordSessionsController < ApplicationController
   allow_unauthenticated_access
@@ -8,14 +8,15 @@ class PasswordSessionsController < ApplicationController
   def create
     return redirect_to(login_path) unless SignInMethod.password?
 
-    user = User.with_password.order(:id).first
-    if user&.authenticate(params[:password].to_s)
+    # authenticate_by takes the same time whether or not the email exists.
+    user = User.with_password.authenticate_by(email: params[:email].to_s, password: params[:password].to_s)
+    if user
       return_to = session.delete(:return_to)
       start_new_session_for user
       redirect_to return_to || root_path
     else
       Rails.logger.warn "Password sign-in refused"
-      flash.now[:alert] = "That password didn't match."
+      flash.now[:alert] = "That email and password didn't match."
       render "oidc_auth/login", status: :unprocessable_content
     end
   end

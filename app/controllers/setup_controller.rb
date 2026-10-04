@@ -69,7 +69,7 @@ class SetupController < ApplicationController
     end
 
     def password_params
-      params.fetch(:user, {}).permit(:password, :password_confirmation)
+      params.fetch(:user, {}).permit(:email, :password, :password_confirmation)
     end
 
     # A blank secret keeps the saved one, which the form never shows.

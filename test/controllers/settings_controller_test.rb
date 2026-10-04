@@ -23,7 +23,7 @@ class SettingsControllerTest < ActionDispatch::IntegrationTest
 
   test "changing the password keeps this session and ends every other" do
     other = open_session
-    other.post login_url, params: { password: "a long enough password" }
+    other.post login_url, params: { email: "dan@example.com", password: "a long enough password" }
 
     sign_in_with_password
     patch settings_password_url, params: { current_password: "a long enough password", user: new_password }
@@ -35,6 +35,27 @@ class SettingsControllerTest < ActionDispatch::IntegrationTest
 
     other.get root_url
     assert_equal login_url, other.response.location
+  end
+
+  test "changing the email needs the current password" do
+    sign_in_with_password
+
+    patch settings_email_url, params: { current_password: "wrong wrong wrong", user: { email: "new@example.com" } }
+    assert_response :unprocessable_content
+    assert_equal "dan@example.com", @owner.reload.email
+
+    patch settings_email_url, params: { current_password: "a long enough password", user: { email: "New@Example.com" } }
+    assert_redirected_to settings_url
+    assert_equal "new@example.com", @owner.reload.email
+  end
+
+  test "an invalid email isn't saved" do
+    sign_in_with_password
+
+    patch settings_email_url, params: { current_password: "a long enough password", user: { email: "nope" } }
+
+    assert_response :unprocessable_content
+    assert_equal "dan@example.com", @owner.reload.email
   end
 
   test "switching to OIDC needs the current password" do

@@ -2,14 +2,14 @@ require "test_helper"
 
 class UserTest < ActiveSupport::TestCase
   test "a password is at least twelve characters" do
-    user = User.new(password: "elevenchars", password_confirmation: "elevenchars")
+    user = User.new(email: "dan@example.com", password: "elevenchars", password_confirmation: "elevenchars")
 
     assert_not user.valid?
     assert user.errors[:password].any?
   end
 
   test "a password must match its confirmation" do
-    user = User.new(password: "a long enough password", password_confirmation: "something else entirely")
+    user = User.new(email: "dan@example.com", password: "a long enough password", password_confirmation: "something else entirely")
 
     assert_not user.valid?
     assert user.errors[:password_confirmation].any?
@@ -17,13 +17,13 @@ class UserTest < ActiveSupport::TestCase
 
   test "a password longer than bcrypt reads is refused rather than silently truncated" do
     long = "x" * 73
-    user = User.new(password: long, password_confirmation: long)
+    user = User.new(email: "dan@example.com", password: long, password_confirmation: long)
 
     assert_not user.valid?
   end
 
   test "the password is stored hashed" do
-    user = User.create!(password: "a long enough password", password_confirmation: "a long enough password")
+    user = User.create!(email: "dan@example.com", password: "a long enough password", password_confirmation: "a long enough password")
 
     assert_not_includes user.password_digest, "a long enough password"
     assert user.authenticate("a long enough password")
@@ -46,12 +46,23 @@ class UserTest < ActiveSupport::TestCase
   end
 
   test "resetting the password removes it and rotates the session token" do
-    user = User.create!(password: "a long enough password", password_confirmation: "a long enough password")
+    user = User.create!(email: "dan@example.com", password: "a long enough password", password_confirmation: "a long enough password")
     before = user.session_token
 
     user.reset_password!
 
     assert_nil user.reload.password_digest
     assert_not_equal before, user.session_token
+  end
+
+  test "a password user needs a valid email" do
+    assert_not User.new(password: "a long enough password", password_confirmation: "a long enough password").valid?
+    assert_not User.new(email: "not an email", password: "a long enough password", password_confirmation: "a long enough password").valid?
+  end
+
+  test "the email is stored trimmed and lowercase" do
+    user = User.create!(email: "  Dan@Example.COM ", password: "a long enough password", password_confirmation: "a long enough password")
+
+    assert_equal "dan@example.com", user.email
   end
 end

@@ -11,7 +11,7 @@ class SignInMethodTest < ActiveSupport::TestCase
   end
 
   test "an owner with a password and no provider signs in with the password" do
-    User.create!(password: "a long enough password", password_confirmation: "a long enough password")
+    User.create!(email: "dan@example.com", password: "a long enough password", password_confirmation: "a long enough password")
 
     assert_equal :password, SignInMethod.current
     assert_not Setup.open?
@@ -36,7 +36,7 @@ class SignInMethodTest < ActiveSupport::TestCase
   # identity at the provider's callback. Until that happens the password must
   # keep working, or an abandoned switch locks the owner out.
   test "a provider saved while switching keeps the password working until an identity is linked" do
-    User.create!(password: "a long enough password", password_confirmation: "a long enough password")
+    User.create!(email: "dan@example.com", password: "a long enough password", password_confirmation: "a long enough password")
     OidcProvider.create!(@fake.provider_attributes)
 
     assert_equal :password, SignInMethod.current
@@ -44,7 +44,7 @@ class SignInMethodTest < ActiveSupport::TestCase
   end
 
   test "resetting the password with no provider reopens setup" do
-    owner = User.create!(password: "a long enough password", password_confirmation: "a long enough password")
+    owner = User.create!(email: "dan@example.com", password: "a long enough password", password_confirmation: "a long enough password")
 
     owner.reset_password!
 
