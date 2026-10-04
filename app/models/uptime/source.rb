@@ -10,7 +10,7 @@ class Uptime::Source < ApplicationRecord
   KEY = /\A[a-z0-9][a-z0-9_-]*\z/
   KINDS = Uptime::Monitor::KINDS
   FIELDS = {
-    "http" => %w[ name interval timeout retries expect_status tls_verify remind_every ],
+    "http" => %w[ name interval timeout retries expect_status expect_body expect_json tls_verify remind_every ],
     "tcp" => %w[ name interval timeout retries remind_every ],
     "push" => %w[ name interval schedule timezone grace max_runtime value remind_every ]
   }.freeze
@@ -22,6 +22,8 @@ class Uptime::Source < ApplicationRecord
   MIN_INTERVAL = 20
   DIGEST = /\Asha256:[0-9a-f]{64}\z/
   # host:port, or [v6 address]:port.
+  # Keys and array indexes joined with dots: queues.fetch.paused, workers.0.alive.
+  JSON_PATH = /\A[^.]+(\.[^.]+)*\z/
   HOST_PORT = /\A(?:[A-Za-z0-9.-]+|\[[0-9A-Fa-f:]+\]):(\d+)\z/
   VALUE_FIELDS = %w[ label unit warn_above warn_below down_above down_below ].freeze
   # 30s, 5m, 3h, 1d, or plain seconds.
@@ -141,7 +143,7 @@ class Uptime::Source < ApplicationRecord
         kind: kind, target: target,
         interval: settings["interval"],
         timeout: settings.fetch("timeout", 0), retries: settings.fetch("retries", 0), grace: settings.fetch("grace", 0),
-        options: settings.slice("expect_status", "tls_verify", "schedule", "timezone", "max_runtime", "value", "remind_every")
+        options: settings.slice("expect_status", "expect_body", "expect_json", "tls_verify", "schedule", "timezone", "max_runtime", "value", "remind_every")
       }
       [ definition, problems ]
     end
@@ -152,7 +154,21 @@ class Uptime::Source < ApplicationRecord
       problems.concat timing_problems(settings)
       problems << "expect_status must look like 200-299, 401" unless settings["expect_status"].to_s.match?(/\A\s*\d{3}(-\d{3})?(\s*,\s*\d{3}(-\d{3})?)*\s*\z/)
       problems << "tls_verify must be true or false" unless [ true, false ].include?(settings["tls_verify"])
+      problems << "expect_body must be the text to find" if settings.key?("expect_body") && !(settings["expect_body"].is_a?(String) && settings["expect_body"].present?)
+      problems.concat expect_json_problems(settings["expect_json"]) if settings.key?("expect_json")
       problems
+    end
+
+    def expect_json_problems(expected)
+      return [ "expect_json should be a map of paths to values, such as queue_status: healthy" ] unless expected.is_a?(Hash) && expected.any?
+
+      expected.filter_map do |path, value|
+        if !path.to_s.match?(JSON_PATH)
+          "expect_json path #{path.to_s.inspect} should be keys joined with dots, such as queues.fetch.paused"
+        elsif !(value.nil? || value.is_a?(String) || value.is_a?(Numeric) || [ true, false ].include?(value))
+          "expect_json #{path} should be a single value; write a nested key as #{path}.<key>"
+        end
+      end
     end
 
     def tcp_problems(target, settings)

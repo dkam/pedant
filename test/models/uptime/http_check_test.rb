@@ -72,6 +72,66 @@ class Uptime::HttpCheckTest < ActiveSupport::TestCase
     assert_match(/TLS.*certificate verify failed/, result.message)
   end
 
+  test "expect_body is up when the body contains it" do
+    stub_request(:get, URL).to_return(status: 200, body: "# HELP tuber_jobs_ready\ntuber_jobs_ready 3\n")
+
+    assert_equal "up", check("expect_body" => "tuber_").status
+  end
+
+  test "expect_body is down when the body doesn't contain it" do
+    stub_request(:get, URL).to_return(status: 200, body: "<html>Bad gateway</html>")
+
+    result = check("expect_body" => "tuber_")
+
+    assert_equal "down", result.status
+    assert_equal %(Body doesn't contain "tuber_"), result.message
+  end
+
+  test "a body check isn't reached when the status is already wrong" do
+    stub_request(:get, URL).to_return(status: 502, body: "tuber_")
+
+    assert_equal "HTTP 502", check("expect_body" => "tuber_").message
+  end
+
+  test "expect_json is up when every path has its value" do
+    stub_request(:get, URL).to_return(status: 200, body: { queue_status: "healthy", queues: { fetch: { paused: false } }, workers: [ { alive: true } ] }.to_json)
+
+    assert_equal "up", check("expect_json" => { "queue_status" => "healthy", "queues.fetch.paused" => false, "workers.0.alive" => true }).status
+  end
+
+  test "expect_json is down with what was found instead" do
+    stub_request(:get, URL).to_return(status: 200, body: { queue_status: "degraded" }.to_json)
+
+    result = check("expect_json" => { "queue_status" => "healthy" })
+
+    assert_equal "down", result.status
+    assert_equal %(queue_status is "degraded", expected "healthy"), result.message
+  end
+
+  test "expect_json is down when a path is missing" do
+    stub_request(:get, URL).to_return(status: 200, body: { queues: {} }.to_json)
+
+    assert_equal "queues.fetch.paused is missing", check("expect_json" => { "queues.fetch.paused" => false }).message
+  end
+
+  test "expect_json is down when the body isn't JSON" do
+    stub_request(:get, URL).to_return(status: 200, body: "<html>Bad gateway</html>")
+
+    result = check("expect_json" => { "queue_status" => "healthy" })
+
+    assert_equal "down", result.status
+    assert_equal "Body isn't JSON", result.message
+  end
+
+  test "a body too large to check is down rather than read without end" do
+    stub_request(:get, URL).to_return(status: 200, body: "x" * (Uptime::HttpCheck::MAX_BODY + 1))
+
+    result = check("expect_body" => "tuber_")
+
+    assert_equal "down", result.status
+    assert_match(/larger than 1 MB/, result.message)
+  end
+
   test "the request says it's Pedant" do
     stub_request(:get, URL).with(headers: { "User-Agent" => "Pedant/#{Pedant::VERSION}" }).to_return(status: 200)
 

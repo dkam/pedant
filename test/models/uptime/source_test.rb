@@ -255,4 +255,37 @@ class Uptime::SourceTest < ActiveSupport::TestCase
     source.sync!
     assert_match(/unknown field.*expect_status/, source.sync_error_list.join)
   end
+
+  test "an http monitor can check its body for text or JSON values" do
+    source = monitor_source("monitors.yml" => {
+      "tuber" => { "http" => "http://100.111.0.120:9101/metrics", "expect_body" => "tuber_" },
+      "splat-queue" => { "http" => "https://splat.booko.info/_health", "expect_json" => { "queue_status" => "healthy", "workers.0.alive" => true } }
+    })
+
+    source.sync!
+
+    assert_empty source.sync_error_list
+    assert_equal "tuber_", source.monitors.find_by!(key: "tuber").options["expect_body"]
+    assert_equal({ "queue_status" => "healthy", "workers.0.alive" => true }, source.monitors.find_by!(key: "splat-queue").options["expect_json"])
+  end
+
+  test "body checks are checked" do
+    {
+      { "expect_body" => "" } => /expect_body/,
+      { "expect_body" => 42 } => /expect_body/,
+      { "expect_json" => "healthy" } => /expect_json/,
+      { "expect_json" => {} } => /expect_json/,
+      { "expect_json" => { "queues" => { "fetch" => "ok" } } } => /expect_json.*queues/,
+      { "expect_json" => { "a..b" => 1 } } => /expect_json.*a\.\.b/
+    }.each do |settings, pattern|
+      source = monitor_source("monitors.yml" => { "web" => { "http" => "http://splat.local/" }.merge(settings) })
+      source.sync!
+      assert_empty source.monitors, "expected #{settings.inspect} to be refused"
+      assert_match pattern, source.sync_error_list.join
+    end
+
+    source = monitor_source("monitors.yml" => { "db" => { "tcp" => "pg01:5432", "expect_body" => "ok" } })
+    source.sync!
+    assert_match(/unknown field.*expect_body/, source.sync_error_list.join)
+  end
 end

@@ -132,3 +132,6 @@ without Gitea access. The issue remains the place for discussion.
 - [`decisions/0021-tcp-monitors.md`](decisions/0021-tcp-monitors.md) adds
   `tcp: host:port` monitors, which only check that the port accepts a
   connection.
+- [`decisions/0022-http-body-checks.md`](decisions/0022-http-body-checks.md)
+  adds `expect_body` (text to find) and `expect_json` (dotted paths and their
+  values) to `http` monitors, for Kuma's keyword and json-query monitors.
