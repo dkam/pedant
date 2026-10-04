@@ -116,3 +116,12 @@ without Gitea access. The issue remains the place for discussion.
   defines monitors in a `monitors.yml` in the stacks repos. Pedant syncs from
   it and keeps only observed state. Removing an entry retires the monitor;
   push tokens go in as digests.
+- [`decisions/0017-password-sign-in-takes-an-email.md`](decisions/0017-password-sign-in-takes-an-email.md)
+  gives the password owner an email to sign in with, and settles that a user
+  has a password or an OIDC identity, never both.
+- [`decisions/0018-push-monitors-as-built.md`](decisions/0018-push-monitors-as-built.md)
+  records how push monitors were built: digest lookup, tokens kept out of
+  logs, Kuma's status rules, grace, and forgiveness after Pedant's own outage.
+- [`decisions/0019-push-values-runs-and-schedules.md`](decisions/0019-push-values-runs-and-schedules.md)
+  adds values with units and limits, run times with `max_runtime`, and cron
+  schedules to push monitors.

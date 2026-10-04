@@ -48,7 +48,7 @@ monitors:
     value: { label: Disk used, unit: "%", warn_above: 80, down_above: 90 }
 ```
 
-Push fields are described in ADR 0012's amendments.
+Push fields are described in ADRs 0018 and 0019.
 
 - **Where:** `monitors.yml` at the repo root, and `<stack>/monitors.yml`
   beside a stack's compose file, so a stack's monitors move or go with it.

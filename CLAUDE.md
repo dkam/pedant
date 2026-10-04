@@ -52,7 +52,7 @@ Kuma does two things, and Pedant replaces both. Seed both from Kuma's export
   holds the token's SHA-256 digest, never the token; `bin/rails
   pedant:push_token` makes a pair. The token never reaches a log. Pushes can
   carry a value (limits and unit in monitors.yml), mark a run's start, and
-  follow a cron schedule (ADR 0012's amendments; `Uptime::Monitor::Push`).
+  follow a cron schedule (ADRs 0018, 0019; `Uptime::Monitor::Push`).
 - **Splat's check-ins:** splat keeps the Rails apps' own job check-ins. Pedant
   only shows their state.
 - **Pedant's own outages:**
@@ -131,7 +131,8 @@ Not Postgres, not Redis, not Sidekiq.
 - **Host:** off the fleet (not hetz01 or misc01), on the tailnet only. Which
   machine doesn't matter to the code (ADR 0008).
 - **Login:** a password for one owner, or OIDC, chosen at setup. Only the
-  chosen one works (ADR 0015). No sign-up, no reset by email.
+  chosen one works (ADRs 0015, 0017). The password owner signs in with an
+  email. No sign-up, no reset by email.
   - The owner claims the instance with a setup code printed to the console,
     ported from `../kith` (`app/models/setup.rb`, ADR 0009).
   - OIDC is ported from `../spool` (`docs/auth.md`). The provider is entered

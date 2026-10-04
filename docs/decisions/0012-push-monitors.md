@@ -59,50 +59,8 @@ are imported with the monitors (issue #1), so the paths stay the same too.
 - **Leave push monitoring on Kuma.** Rejected: Kuma would never retire, and its
   hand-maintained list is the problem #5 started from.
 
-## Amendment (2026-10-04): as built
+## Amendment (2026-10-04)
 
-- **The token is looked up by its SHA-256 digest, not compared.** monitors.yml
-  holds only the digest (ADR 0016), so Pedant hashes the token it receives and
-  finds the monitor by that digest. This replaces "compare in constant time":
-  query timing could reveal at most something about the digest, which says
-  nothing about the token.
-- **Kept out of logs:** `PushTokenFilter` rewrites the path to
-  `/api/push/[FILTERED]` before Rails logs the request, and Thruster's own
-  request log is off in the image (`LOG_REQUESTS=false`).
-- **Rate limit:** 30 pushes a minute per token, counted in the process.
-- **Status, as in Kuma:** no status is up, and anything other than `up` is
-  down. A push monitor has no retries: the job said how it went.
-- **Missed** means no push for `interval` plus `grace` (default 60 seconds).
-  `interval` has no default for push monitors; it must be given.
-- **Pedant's own outage:** the scheduler records each run. A gap of more than
-  2 minutes between runs means Pedant or its job worker was down, so every
-  push monitor gets a full interval plus grace from then before it can be
-  missed. Active checks aren't affected.
-- Both GET and POST are accepted. Whether any script needs POST is still to be
-  checked against the Kuma export.
-
-## Amendment (2026-10-04): values, runs and schedules
-
-Kuma's push monitors fall short in three ways, and Pedant's go further. Each
-is an addition: a Kuma-style push still works unchanged.
-
-- **Values with units.** A push can carry `value=87`. monitors.yml gives it a
-  label, a unit and limits:
-  `value: { label: Disk used, unit: "%", warn_above: 80, down_above: 90 }`
-  (or `warn_below` / `down_below`). The limits live in git, never in the push,
-  so a script can't loosen its own. Past a down limit is down; past a warn
-  limit is the new **warn** state (not a failure, not a flap, and no alert
-  unless that's decided later). A value that isn't a number is down, since the
-  script is broken. The job's own `status=down` wins over its value. Kuma's
-  `ping` still means milliseconds. Values are graphed in their own unit.
-  Rubberneck is meant to take over disk monitoring eventually; values aren't
-  disk-specific.
-- **Runs.** `status=start` marks the start of a run and changes nothing else.
-  The finish records the run's duration, which is graphed. With
-  `max_runtime: 3h`, a run still going after that is down ("Started 3 hours
-  ago, still running") without waiting for the interval.
-- **Schedules.** `schedule: "0 2 * * 1-5"` with a required `timezone`, in
-  place of `interval`. A push is expected after each scheduled time plus
-  grace, so the days a job doesn't run aren't missed. Grace has to cover the
-  job's run time.
-- Durations in monitors.yml can be written `30s`, `5m`, `3h` or `1d`.
+Two decisions were first recorded here and have moved to their own ADRs:
+how push monitors were built, including replacing "compare in constant time"
+with a digest lookup (ADR 0018), and values, runs and schedules (ADR 0019).

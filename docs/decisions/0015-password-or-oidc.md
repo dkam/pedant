@@ -73,10 +73,5 @@ both console resets.
 
 ## Amendment (2026-10-04)
 
-The password option has an email address too. Setup asks for it, and sign-in
-takes email and password (`authenticate_by`, which takes the same time whether
-or not the email exists, and the error doesn't say which was wrong). Emails are
-stored trimmed and lowercase. Changing it in settings needs the current
-password. It's still not a way back in: there's no reset by email, and the
-console remains the recovery path. It's also the obvious default recipient
-for email alerts (ADR 0013).
+The email for password sign-in, first recorded here, is a new decision and
+has moved to ADR 0017.
