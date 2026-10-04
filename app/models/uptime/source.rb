@@ -10,12 +10,12 @@ class Uptime::Source < ApplicationRecord
   KEY = /\A[a-z0-9][a-z0-9_-]*\z/
   KINDS = Uptime::Monitor::KINDS
   FIELDS = {
-    "http" => %w[ name interval timeout retries expect_status tls_verify ],
-    "push" => %w[ name interval schedule timezone grace max_runtime value ]
+    "http" => %w[ name interval timeout retries expect_status tls_verify remind_every ],
+    "push" => %w[ name interval schedule timezone grace max_runtime value remind_every ]
   }.freeze
   DEFAULTS = {
-    "http" => { "interval" => 60, "timeout" => 10, "retries" => 1, "expect_status" => "200-299", "tls_verify" => true },
-    "push" => { "grace" => 60 }
+    "http" => { "interval" => 60, "timeout" => 10, "retries" => 1, "expect_status" => "200-299", "tls_verify" => true, "remind_every" => 86_400 },
+    "push" => { "grace" => 60, "remind_every" => 86_400 }
   }.freeze
   MIN_INTERVAL = 20
   DIGEST = /\Asha256:[0-9a-f]{64}\z/
@@ -122,16 +122,18 @@ class Uptime::Source < ApplicationRecord
       problems << "unknown #{"field".pluralize(unknown.size)} for a #{kind} monitor: #{unknown.join(", ")}" if unknown.any?
 
       settings = DEFAULTS.fetch(kind).merge(entry)
-      %w[ interval timeout grace max_runtime ].each { |field| settings[field] = seconds(settings[field]) if settings.key?(field) }
+      %w[ interval timeout grace max_runtime remind_every ].each { |field| settings[field] = seconds(settings[field]) if settings.key?(field) }
+      settings["remind_every"] = nil if entry["remind_every"] == "never"
       target = entry[kind].to_s
       problems.concat(kind == "http" ? http_problems(target, settings) : push_problems(target, entry, settings))
+      problems << "remind_every must be a duration of at least 5 minutes, or never" unless settings["remind_every"].nil? || (settings["remind_every"].is_a?(Integer) && settings["remind_every"] >= 300)
 
       definition = {
         name: entry["name"].presence&.to_s || key.titleize,
         kind: kind, target: target,
         interval: settings["interval"],
         timeout: settings.fetch("timeout", 0), retries: settings.fetch("retries", 0), grace: settings.fetch("grace", 0),
-        options: settings.slice("expect_status", "tls_verify", "schedule", "timezone", "max_runtime", "value")
+        options: settings.slice("expect_status", "tls_verify", "schedule", "timezone", "max_runtime", "value", "remind_every")
       }
       [ definition, problems ]
     end

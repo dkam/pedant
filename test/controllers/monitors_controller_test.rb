@@ -44,6 +44,8 @@ class MonitorsControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "with no sources yet, the dashboard says where to add one" do
+    AlertDelivery.delete_all
+    Alert.delete_all
     Uptime::Check.delete_all
     Uptime::StateChange.delete_all
     Uptime::Monitor.delete_all

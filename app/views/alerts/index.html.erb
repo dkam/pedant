@@ -1,0 +1,103 @@
+<% content_for :title, "Alerts · Pedant" %>
+
+<h1 class="text-2xl font-semibold">Alerts</h1>
+<p class="mt-1 text-sm text-stone-600">
+  Every alert goes to every enabled channel: when a monitor goes down, as a reminder while it stays down,
+  and when it recovers. Never for "unknown", which means Pedant itself couldn't tell.
+</p>
+
+<div class="mt-6 grid gap-6 md:grid-cols-2">
+  <% { "ntfy" => "Push to a phone through an ntfy topic.", "email" => "The second path: if ntfy is down with the fleet, email still gets through." }.each do |kind, blurb| %>
+    <% channel = @channels.fetch(kind) %>
+    <section data-channel="<%= kind %>" class="rounded-lg border border-stone-200 bg-white p-6">
+      <div class="flex items-baseline justify-between">
+        <h2 class="text-lg font-semibold"><%= kind == "ntfy" ? "ntfy" : "Email" %></h2>
+        <% if (delivery = channel.persisted? && channel.latest_delivery) %>
+          <span class="text-xs <%= delivery.status == "sent" ? "text-green-700" : "text-red-700" %>">
+            Last <%= delivery.status %> <%= time_ago_in_words(delivery.attempted_at) %> ago
+          </span>
+        <% end %>
+      </div>
+      <p class="mt-1 text-sm text-stone-600"><%= blurb %></p>
+
+      <%= form_with model: channel, scope: :alert_channel, url: alert_channel_path(kind), method: :patch, class: "mt-5 space-y-4" do |form| %>
+        <%= render "shared/errors", record: channel %>
+        <% if kind == "ntfy" %>
+          <div>
+            <%= form.label :url, "Topic URL", class: "label" %>
+            <%= form.url_field :url, placeholder: "https://ntfy.sh/your-topic", class: "field font-mono" %>
+          </div>
+          <div>
+            <%= form.label :secret, "Access token", class: "label" %>
+            <%= form.password_field :secret, value: "", autocomplete: "off", class: "field font-mono" %>
+            <p class="hint"><%= channel.secret.present? ? "Saved. Leave blank to keep it." : "Optional, for a protected topic." %></p>
+          </div>
+        <% else %>
+          <div class="grid grid-cols-3 gap-3">
+            <div class="col-span-2">
+              <%= form.label :address, "SMTP server", class: "label" %>
+              <%= form.text_field :address, placeholder: "smtp.example.com", class: "field" %>
+            </div>
+            <div>
+              <%= form.label :port, "Port", class: "label" %>
+              <%= form.number_field :port, placeholder: "587", class: "field" %>
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <%= form.label :user_name, "Username", class: "label" %>
+              <%= form.text_field :user_name, autocomplete: "off", class: "field" %>
+            </div>
+            <div>
+              <%= form.label :secret, "Password", class: "label" %>
+              <%= form.password_field :secret, value: "", autocomplete: "off", class: "field" %>
+              <p class="hint"><%= channel.secret.present? ? "Saved. Blank keeps it." : "" %></p>
+            </div>
+          </div>
+          <div>
+            <%= form.label :from, "From", class: "label" %>
+            <%= form.email_field :from, placeholder: "pedant@example.com", class: "field" %>
+          </div>
+          <div>
+            <%= form.label :to, "To", class: "label" %>
+            <%= form.text_field :to, placeholder: "you@example.com, ops@example.com", class: "field" %>
+          </div>
+        <% end %>
+        <label class="flex items-center gap-2 text-sm">
+          <%= form.check_box :enabled %> Send alerts through <%= kind %>
+        </label>
+        <%= form.submit "Save", class: "btn" %>
+      <% end %>
+      <% if channel.persisted? %>
+        <%= button_to "Send a test alert", test_alert_channel_path(kind), class: "mt-3 text-sm underline" %>
+      <% end %>
+    </section>
+  <% end %>
+</div>
+
+<section class="mt-10">
+  <h2 class="text-lg font-semibold">Recent alerts</h2>
+  <ul class="mt-3 divide-y divide-stone-100 rounded-lg border border-stone-200 bg-white text-sm">
+    <% @alerts.each do |alert| %>
+      <li data-alert class="px-4 py-3">
+        <div class="flex items-baseline justify-between gap-3">
+          <span class="font-medium">
+            <%= alert.monitor ? link_to(alert.title, monitor_path(alert.monitor), class: "hover:underline") : alert.title %>
+          </span>
+          <span class="whitespace-nowrap text-xs text-stone-500"><%= time_ago_in_words(alert.created_at) %> ago</span>
+        </div>
+        <% if alert.message.present? %><p class="mt-1 whitespace-pre-line text-xs text-stone-600"><%= alert.message %></p><% end %>
+        <div class="mt-2 flex flex-wrap gap-2">
+          <% alert.deliveries.sort_by(&:attempted_at).each do |delivery| %>
+            <span data-delivery="<%= delivery.status %>" title="<%= delivery.error %>"
+                  class="rounded px-2 py-0.5 text-xs <%= delivery.status == "sent" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800" %>">
+              <%= delivery.channel.kind_name %> <%= delivery.status %><%= " (try #{delivery.attempt})" if delivery.attempt > 1 %><%= ": #{delivery.error.truncate(80)}" if delivery.error %>
+            </span>
+          <% end %>
+          <% if alert.deliveries.empty? %><span class="text-xs text-stone-500">No channel was enabled.</span><% end %>
+        </div>
+      </li>
+    <% end %>
+    <% if @alerts.none? %><li class="px-4 py-3 text-stone-500">Nothing sent yet.</li><% end %>
+  </ul>
+</section>

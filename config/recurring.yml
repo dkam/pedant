@@ -4,6 +4,11 @@ development: &uptime
     class: Uptime::ScheduleChecksJob
     queue: checks
     schedule: every 15 seconds
+  # While a monitor stays down, a reminder every remind_every (ADR 0013).
+  send_alert_reminders:
+    class: SendRemindersJob
+    queue: alerts
+    schedule: every 5 minutes
   sync_monitor_sources:
     class: Uptime::SyncSourcesJob
     schedule: every minute

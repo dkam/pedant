@@ -50,3 +50,21 @@ end
 
 ActiveSupport::TestCase.include MonitorFiles, OfflineSwitch
 ActiveSupport::TestCase.setup { pedant_online! }
+
+# Alert channels for tests (ADR 0013). ntfy requests are stubbed by the test.
+module AlertChannels
+  NTFY_URL = "https://ntfy.example.test/pedant"
+
+  def ntfy_channel!(token: "ntfy-secret-token", enabled: true)
+    AlertChannel::Ntfy.create!(enabled: enabled, settings: { "url" => NTFY_URL, "link_base" => "http://pedant.test" }, secret: token)
+  end
+
+  def email_channel!(enabled: true)
+    AlertChannel::Email.create!(enabled: enabled, secret: "smtp-password", settings: {
+      "address" => "smtp.example.test", "port" => 587, "user_name" => "pedant", "from" => "pedant@example.test",
+      "to" => "dan@example.com, ops@example.com", "link_base" => "http://pedant.test"
+    })
+  end
+end
+
+ActiveSupport::TestCase.include AlertChannels

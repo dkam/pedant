@@ -125,3 +125,7 @@ without Gitea access. The issue remains the place for discussion.
 - [`decisions/0019-push-values-runs-and-schedules.md`](decisions/0019-push-values-runs-and-schedules.md)
   adds values with units and limits, run times with `max_runtime`, and cron
   schedules to push monitors.
+- [`decisions/0020-alerts-as-built.md`](decisions/0020-alerts-as-built.md)
+  alerts once per outage (down, reminders, recovery), never for unknown, with
+  per-monitor `remind_every`, encrypted channel secrets, and every delivery
+  attempt recorded.

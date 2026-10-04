@@ -30,6 +30,12 @@ Rails.application.routes.draw do
     post :sync, on: :member
   end
 
+  # Alerts (ADR 0013): channel settings, a test per channel, and the log.
+  resources :alerts, only: :index
+  resources :alert_channels, only: :update, param: :kind do
+    post :test, on: :member
+  end
+
   # Push monitors, on Kuma's URL shape (ADR 0012). PushTokenFilter has already
   # replaced the token with [FILTERED] by the time this matches.
   match "api/push/[FILTERED]", to: "pushes#create", via: %i[ get post ], as: :push

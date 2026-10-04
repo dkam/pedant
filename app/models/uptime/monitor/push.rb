@@ -87,9 +87,4 @@ module Uptime::Monitor::Push
     def next_scheduled_after(time)
       Fugit.parse_cron("#{options["schedule"]} #{options["timezone"]}").next_time(time).to_t
     end
-
-    # "1 hour and 10 minutes"
-    def to_the_minute(seconds)
-      ActiveSupport::Duration.build((seconds / 60).round * 60)
-    end
 end

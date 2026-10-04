@@ -11,6 +11,13 @@
   <% end %>
 </div>
 
+<% AlertChannel.enabled.select(&:failing?).each do |channel| %>
+  <div class="alert mt-6">
+    Alerts through <%= link_to channel.kind_name, alerts_path, class: "underline" %> are failing:
+    <%= channel.latest_delivery.error %> (<%= time_ago_in_words(channel.latest_delivery.attempted_at) %> ago).
+  </div>
+<% end %>
+
 <% @sources.select { |source| source.sync_errors.present? }.each do |source| %>
   <div class="alert mt-6">
     <p class="font-medium">Some of <%= source.name %>'s monitors.yml couldn't be applied. The last good definitions are still in use.</p>

@@ -12,7 +12,7 @@ class Uptime::SourceTest < ActiveSupport::TestCase
     caddy = source.monitors.find_by!(key: "caddy")
     assert_equal [ "Caddy", "http", "https://clinch.aapamilne.com/", 60, 10, 1, "monitors.yml" ],
       [ caddy.name, caddy.kind, caddy.target, caddy.interval, caddy.timeout, caddy.retries, caddy.defined_in ]
-    assert_equal({ "expect_status" => "200-299", "tls_verify" => true }, caddy.options)
+    assert_equal({ "expect_status" => "200-299", "tls_verify" => true, "remind_every" => 86_400 }, caddy.options)
 
     splat = source.monitors.find_by!(key: "splat")
     assert_equal [ "Splat", 30, 5, 3, "splat/monitors.yml" ], [ splat.name, splat.interval, splat.timeout, splat.retries, splat.defined_in ]
@@ -209,5 +209,21 @@ class Uptime::SourceTest < ActiveSupport::TestCase
 
     assert_empty source.monitors
     assert_match(/nas-backup: .*booko/, source.sync_error_list.join)
+  end
+
+  test "remind_every is a duration or never, for either kind, and defaults to a day" do
+    _token, digest = push_token
+    source = monitor_source("monitors.yml" => {
+      "default" => { "http" => "http://splat.local/" },
+      "quick" => { "http" => "http://splat.local/", "remind_every" => "6h" },
+      "quiet" => { "push" => digest, "interval" => 3600, "remind_every" => "never" },
+      "bad" => { "http" => "http://splat.local/", "remind_every" => "sometimes" }
+    })
+
+    source.sync!
+
+    assert_equal({ "default" => 86_400, "quick" => 21_600, "quiet" => nil },
+      source.monitors.to_h { |monitor| [ monitor.key, monitor.options["remind_every"] ] })
+    assert_match(/bad: .*remind_every/, source.sync_error_list.join)
   end
 end

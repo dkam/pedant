@@ -10,7 +10,40 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_04_030018) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_04_033802) do
+  create_table "alert_channels", force: :cascade do |t|
+    t.string "type", null: false
+    t.boolean "enabled", default: true, null: false
+    t.json "settings", default: {}, null: false
+    t.text "secret"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["type"], name: "index_alert_channels_on_type", unique: true
+  end
+
+  create_table "alert_deliveries", force: :cascade do |t|
+    t.integer "alert_id", null: false
+    t.integer "channel_id", null: false
+    t.string "status", null: false
+    t.text "error"
+    t.integer "attempt", default: 1, null: false
+    t.datetime "attempted_at", null: false
+    t.index ["alert_id"], name: "index_alert_deliveries_on_alert_id"
+    t.index ["channel_id", "attempted_at"], name: "index_alert_deliveries_on_channel_id_and_attempted_at"
+    t.index ["channel_id"], name: "index_alert_deliveries_on_channel_id"
+  end
+
+  create_table "alerts", force: :cascade do |t|
+    t.integer "monitor_id"
+    t.string "kind", null: false
+    t.string "title", null: false
+    t.text "message"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["created_at"], name: "index_alerts_on_created_at"
+    t.index ["monitor_id"], name: "index_alerts_on_monitor_id"
+  end
+
   create_table "oidc_providers", force: :cascade do |t|
     t.string "issuer", null: false
     t.string "client_id", null: false
@@ -73,6 +106,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_04_030018) do
     t.datetime "last_pushed_at"
     t.float "last_value"
     t.datetime "started_at"
+    t.datetime "outage_started_at"
+    t.datetime "reminded_at"
     t.index ["kind", "target"], name: "index_uptime_monitors_on_kind_and_target"
     t.index ["next_check_at"], name: "index_uptime_monitors_on_next_check_at"
     t.index ["source_id", "key"], name: "index_uptime_monitors_on_source_id_and_key", unique: true
@@ -109,6 +144,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_04_030018) do
     t.index ["oidc_issuer", "oidc_sub"], name: "index_users_on_oidc_issuer_and_oidc_sub", unique: true
   end
 
+  add_foreign_key "alert_deliveries", "alert_channels", column: "channel_id"
+  add_foreign_key "alert_deliveries", "alerts"
+  add_foreign_key "alerts", "uptime_monitors", column: "monitor_id"
   add_foreign_key "oidc_sessions", "users"
   add_foreign_key "uptime_checks", "uptime_monitors", column: "monitor_id"
   add_foreign_key "uptime_monitors", "uptime_sources", column: "source_id"

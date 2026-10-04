@@ -11,7 +11,7 @@
 #
 # Push monitors' own behaviour (values, runs, schedules) is in Uptime::Monitor::Push.
 class Uptime::Monitor < ApplicationRecord
-  include Push
+  include Push, Outages
 
   STATES = %w[ pending up warn down unknown ].freeze
   KINDS = %w[ http push ].freeze
@@ -43,7 +43,9 @@ class Uptime::Monitor < ApplicationRecord
       else consecutive_failures
       end
 
+      previous_state = state
       change_state_to next_state(result), message: result.message, at: now
+      track_outage previous_state, state, now, result.message
       self.last_value = result.value unless result.value.nil?
       update!(last_checked_at: now, next_check_at: next_due_from(now), last_latency_ms: result.latency_ms, last_message: result.message)
     end
