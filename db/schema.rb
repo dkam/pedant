@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_04_013645) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_04_023001) do
   create_table "oidc_providers", force: :cascade do |t|
     t.string "issuer", null: false
     t.string "client_id", null: false
@@ -42,6 +42,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_04_013645) do
     t.index ["monitor_id", "checked_at"], name: "index_uptime_checks_on_monitor_id_and_checked_at"
   end
 
+  create_table "uptime_clocks", force: :cascade do |t|
+    t.datetime "ticked_at", null: false
+  end
+
   create_table "uptime_monitors", force: :cascade do |t|
     t.integer "source_id", null: false
     t.string "key", null: false
@@ -63,6 +67,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_04_013645) do
     t.string "last_message"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.integer "grace", default: 0, null: false
+    t.datetime "last_pushed_at"
+    t.index ["kind", "target"], name: "index_uptime_monitors_on_kind_and_target"
     t.index ["next_check_at"], name: "index_uptime_monitors_on_next_check_at"
     t.index ["source_id", "key"], name: "index_uptime_monitors_on_source_id_and_key", unique: true
     t.index ["source_id"], name: "index_uptime_monitors_on_source_id"

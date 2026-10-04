@@ -9,9 +9,16 @@ class Uptime::Source < ApplicationRecord
   FILES = [ "monitors.yml", "*/monitors.yml" ].freeze
   KEY = /\A[a-z0-9][a-z0-9_-]*\z/
   KINDS = Uptime::Monitor::KINDS
-  FIELDS = %w[ name interval timeout retries expect_status tls_verify ] + KINDS
-  DEFAULTS = { "interval" => 60, "timeout" => 10, "retries" => 1, "expect_status" => "200-299", "tls_verify" => true }.freeze
+  FIELDS = {
+    "http" => %w[ name interval timeout retries expect_status tls_verify ],
+    "push" => %w[ name interval grace ]
+  }.freeze
+  DEFAULTS = {
+    "http" => { "interval" => 60, "timeout" => 10, "retries" => 1, "expect_status" => "200-299", "tls_verify" => true },
+    "push" => { "grace" => 60 }
+  }.freeze
   MIN_INTERVAL = 20
+  DIGEST = /\Asha256:[0-9a-f]{64}\z/
 
   has_many :monitors, dependent: :restrict_with_error
 
@@ -30,7 +37,7 @@ class Uptime::Source < ApplicationRecord
       entries.each do |key, (definition, file)|
         monitor = monitors.find_or_initialize_by(key: key)
         monitor.assign_attributes(definition.merge(defined_in: file, retired_at: nil))
-        monitor.next_check_at ||= Time.current
+        monitor.next_check_at ||= monitor.next_due_from(Time.current, first: true)
         monitor.save!
       end
 
@@ -56,6 +63,7 @@ class Uptime::Source < ApplicationRecord
     # files, keys whose entries were invalid, or everything.
     def read_entries(errors_found)
       entries = {}
+      tokens = {}
       unreadable = { all: false, files: [], keys: [] }
 
       unless File.directory?(path)
@@ -68,6 +76,7 @@ class Uptime::Source < ApplicationRecord
         monitors_in(file, errors_found, unreadable)&.each do |key, entry|
           key = key.to_s
           definition, problems = definition_for(key, entry)
+          problems += token_problems(definition, tokens) if problems.none? && definition[:kind] == "push"
 
           if entries.key?(key)
             errors_found << "#{file}: #{key} is already defined in #{entries[key].last}"
@@ -76,6 +85,7 @@ class Uptime::Source < ApplicationRecord
             unreadable[:keys] << key
           else
             entries[key] = [ definition, file ]
+            tokens[definition[:target]] = key if definition[:kind] == "push"
           end
         end
       end
@@ -95,38 +105,69 @@ class Uptime::Source < ApplicationRecord
     end
 
     def definition_for(key, entry)
-      problems = []
       return [ nil, [ "not a valid key (lowercase letters, digits, - and _)" ] ] unless key.match?(KEY)
       return [ nil, [ "should be a map of settings" ] ] unless entry.is_a?(Hash)
 
       entry = entry.transform_keys(&:to_s)
-      unknown = entry.keys - FIELDS
-      problems << "unknown #{"field".pluralize(unknown.size)} #{unknown.join(", ")}" if unknown.any?
-
-      settings = DEFAULTS.merge(entry)
       kinds = KINDS & entry.keys
-      problems << "needs one of #{KINDS.join(", ")}" if kinds.size != 1
-      kind = kinds.first
-      target = entry[kind].to_s
+      return [ nil, [ "needs one of #{KINDS.join(", ")}" ] ] if kinds.size != 1
 
-      problems << "http must be an http:// or https:// URL" if kind == "http" && !web_url?(target)
-      %w[ interval timeout retries ].each do |field|
-        problems << "#{field} must be a whole number" unless settings[field].is_a?(Integer) && settings[field] >= 0
-      end
+      kind = kinds.first
+      problems = []
+      unknown = entry.keys - FIELDS.fetch(kind) - [ kind ]
+      problems << "unknown #{"field".pluralize(unknown.size)} for a #{kind} monitor: #{unknown.join(", ")}" if unknown.any?
+
+      settings = DEFAULTS.fetch(kind).merge(entry)
+      target = entry[kind].to_s
+      problems.concat(kind == "http" ? http_problems(target, settings) : push_problems(target, entry, settings))
+
+      definition = {
+        name: entry["name"].presence&.to_s || key.titleize,
+        kind: kind, target: target,
+        interval: settings["interval"],
+        timeout: settings.fetch("timeout", 0), retries: settings.fetch("retries", 0), grace: settings.fetch("grace", 0),
+        options: settings.slice("expect_status", "tls_verify")
+      }
+      [ definition, problems ]
+    end
+
+    def http_problems(target, settings)
+      problems = []
+      problems << "http must be an http:// or https:// URL" unless web_url?(target)
+      problems.concat whole_numbers(settings, %w[ interval timeout retries ])
       if problems.none?
         problems << "interval must be at least #{MIN_INTERVAL} seconds" if settings["interval"] < MIN_INTERVAL
         problems << "timeout must be at least 1 second and less than the interval" unless settings["timeout"].between?(1, settings["interval"] - 1)
       end
       problems << "expect_status must look like 200-299, 401" unless settings["expect_status"].to_s.match?(/\A\s*\d{3}(-\d{3})?(\s*,\s*\d{3}(-\d{3})?)*\s*\z/)
       problems << "tls_verify must be true or false" unless [ true, false ].include?(settings["tls_verify"])
+      problems
+    end
 
-      definition = {
-        name: entry["name"].presence&.to_s || key.titleize,
-        kind: kind, target: target,
-        interval: settings["interval"], timeout: settings["timeout"], retries: settings["retries"],
-        options: settings.slice("expect_status", "tls_verify")
-      }
-      [ definition, problems ]
+    # The token is a credential, so the file holds only its digest (ADR 0016).
+    def push_problems(target, entry, settings)
+      problems = []
+      problems << "push must be the token's digest, sha256: and 64 hex digits, not the token (bin/rails pedant:push_token makes both)" unless target.match?(DIGEST)
+      return problems << "push needs an interval: the most seconds expected between pushes" unless entry.key?("interval")
+
+      problems.concat whole_numbers(settings, %w[ interval grace ])
+      problems << "interval must be at least #{MIN_INTERVAL} seconds" if problems.none? && settings["interval"] < MIN_INTERVAL
+      problems
+    end
+
+    # A token must name one monitor, in this repo or any other source.
+    def token_problems(definition, tokens)
+      if (other = tokens[definition[:target]])
+        [ "uses the same push token as #{other}" ]
+      elsif (other = Uptime::Monitor.active.where(kind: "push", target: definition[:target]).where.not(source_id: id).includes(:source).first)
+        [ "uses the same push token as #{other.key} in #{other.source.name}" ]
+      else
+        []
+      end
+    end
+
+    def whole_numbers(settings, fields)
+      fields.filter_map { |field| "#{field} must be a whole number" unless settings[field].is_a?(Integer) && settings[field] >= 0 }
     end
 
     def web_url?(target)

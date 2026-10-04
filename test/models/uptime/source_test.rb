@@ -155,4 +155,59 @@ class Uptime::SourceTest < ActiveSupport::TestCase
     assert_not Uptime::Source.new(name: "koti", path: "/does/not/exist").valid?
     assert Uptime::Source.new(name: "koti", path: Dir.tmpdir).valid?
   end
+
+  test "a push monitor holds its token's digest, needs an interval, and gets a minute's grace" do
+    _token, digest = push_token
+    source = monitor_source("monitors.yml" => { "nas-backup" => { "push" => digest, "interval" => 86_400 } })
+
+    source.sync!
+
+    monitor = source.monitors.sole
+    assert_equal [ "push", digest, 86_400, 60, 0 ], [ monitor.kind, monitor.target, monitor.interval, monitor.grace, monitor.retries ]
+    assert_empty source.sync_error_list
+  end
+
+  test "a new push monitor isn't missed before it's had a chance to push" do
+    _token, digest = push_token
+    source = monitor_source("monitors.yml" => { "nas-backup" => { "push" => digest, "interval" => 3600, "grace" => 600 } })
+
+    freeze_time do
+      source.sync!
+      assert_equal (3600 + 600).seconds.from_now, source.monitors.sole.next_check_at
+    end
+  end
+
+  test "push entries are checked" do
+    token, digest = push_token
+    _other, other_digest = push_token("another-token")
+    source = monitor_source("monitors.yml" => {
+      "plain-token" => { "push" => token, "interval" => 3600 },
+      "no-interval" => { "push" => other_digest },
+      "http-fields" => { "push" => other_digest, "interval" => 3600, "timeout" => 5 },
+      "grace-on-http" => { "http" => "http://splat.local/", "grace" => 60 },
+      "first" => { "push" => digest, "interval" => 3600 },
+      "same-token" => { "push" => digest, "interval" => 3600 }
+    })
+
+    source.sync!
+
+    assert_equal [ "first" ], source.monitors.pluck(:key)
+    errors = source.sync_error_list.join("\n")
+    assert_match(/plain-token: .*sha256:.*pedant:push_token/, errors)
+    assert_match(/no-interval: .*interval/, errors)
+    assert_match(/http-fields: .*timeout/, errors)
+    assert_match(/grace-on-http: .*grace/, errors)
+    assert_match(/same-token: .*first/, errors)
+  end
+
+  test "a push token can't be shared with another source's monitor" do
+    _token, digest = push_token
+    monitor_source({ "monitors.yml" => { "backup" => { "push" => digest, "interval" => 3600 } } }, "booko").sync!
+    source = monitor_source("monitors.yml" => { "nas-backup" => { "push" => digest, "interval" => 3600 } })
+
+    source.sync!
+
+    assert_empty source.monitors
+    assert_match(/nas-backup: .*booko/, source.sync_error_list.join)
+  end
 end

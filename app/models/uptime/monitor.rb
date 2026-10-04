@@ -9,7 +9,7 @@
 #   neither counts as a failure nor clears one.
 class Uptime::Monitor < ApplicationRecord
   STATES = %w[ pending up down unknown ].freeze
-  KINDS = %w[ http ].freeze
+  KINDS = %w[ http push ].freeze
 
   belongs_to :source
   has_many :checks, dependent: :delete_all
@@ -38,9 +38,27 @@ class Uptime::Monitor < ApplicationRecord
       end
 
       change_state_to next_state(result), message: result.message, at: now
-      update!(last_checked_at: now, next_check_at: now + interval, last_latency_ms: result.latency_ms, last_message: result.message)
+      update!(last_checked_at: now, next_check_at: next_due_from(now), last_latency_ms: result.latency_ms, last_message: result.message)
     end
   end
+
+  # A push arrived (PushesController). A push monitor has no retries: the job
+  # said how it went, so down is down.
+  def record_push(result)
+    self.last_pushed_at = Time.current
+    record(result)
+  end
+
+  # When it's next due: an active check one interval on (or now, for a new
+  # one); a push monitor once interval plus grace pass without a push.
+  def next_due_from(time, first: false)
+    if push? then time + interval + grace
+    elsif first then time
+    else time + interval
+    end
+  end
+
+  def push? = kind == "push"
 
   # Marks a due monitor as queued, by pushing next_check_at past the time its
   # check could take (the timeout plus LEASE). Only one of two racing callers
@@ -61,13 +79,22 @@ class Uptime::Monitor < ApplicationRecord
     state_changes.where(to_state: "down", changed_at: within.ago..).count
   end
 
+  # An active check asks the target. A push monitor is only checked once it's
+  # overdue, so its check is the miss.
   def check
     case kind
     when "http" then Uptime::HttpCheck.new(target: target, timeout: timeout, options: options).call
+    when "push" then Uptime::Result.new(status: "down", message: "No push for #{silent_for.inspect}")
     end
   end
 
   private
+    # To the minute: "1 hour and 10 minutes".
+    def silent_for
+      seconds = Time.current - (last_pushed_at || created_at)
+      ActiveSupport::Duration.build((seconds / 60).round * 60)
+    end
+
     def next_state(result)
       case result.status
       when "up" then "up"

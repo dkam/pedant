@@ -1,4 +1,21 @@
 namespace :pedant do
+  desc "Make a push monitor token: the token goes in the job, its digest in monitors.yml (ADR 0016)"
+  task :push_token do
+    require "securerandom"
+    require "digest"
+
+    token = SecureRandom.urlsafe_base64(24)
+    puts <<~TEXT
+      In monitors.yml (the digest; safe to commit):
+
+          push: sha256:#{Digest::SHA256.hexdigest(token)}
+
+      In the job (the token; Pedant doesn't keep it, so keep it with the job's secrets):
+
+          curl -fsS "https://<pedant>/api/push/#{token}?status=up&msg=OK"
+    TEXT
+  end
+
   desc "Print the setup code, if setup is open"
   task setup_code: :environment do
     abort "Setup is closed: the owner can sign in." unless Setup.open?

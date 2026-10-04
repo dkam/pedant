@@ -20,6 +20,11 @@ module MonitorFiles
     end
   end
 
+  # A push monitor's token, and the digest monitors.yml holds for it.
+  def push_token(token = "a-push-token-for-tests")
+    [ token, "sha256:#{Digest::SHA256.hexdigest(token)}" ]
+  end
+
   def remove_monitor_file(dir, relative)
     File.delete(File.join(dir, relative))
   end

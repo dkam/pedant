@@ -66,4 +66,18 @@ class MonitorsControllerTest < ActionDispatch::IntegrationTest
     assert_select "[data-state-change]", 1
     assert_includes response.body, "monitors.yml"
   end
+
+  test "a push monitor shows when it last pushed and how to push, never a token" do
+    token, digest = push_token
+    monitor = monitor_source({ "monitors.yml" => { "nas-backup" => { "name" => "NAS backup", "push" => digest, "interval" => 86_400 } } }, "other").tap(&:sync!).monitors.sole
+    monitor.record_push(Uptime::Result.new(status: "up"))
+    sign_in_with_password
+
+    get root_url
+    assert_select "[data-monitor=nas-backup]", /Push, expected every 1 day \(last less than a minute ago\)/
+
+    get monitor_url(monitor)
+    assert_includes response.body, "/api/push/&lt;token&gt;"
+    assert_not_includes response.body, token
+  end
 end

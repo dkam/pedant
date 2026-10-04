@@ -25,12 +25,15 @@ RUN apt-get update -qq && \
 
 # Set production environment variables and enable jemalloc for reduced memory usage and latency.
 # Solid Queue runs inside Puma: Pedant is one container, and checks are its job.
+# Thruster's request log would print push tokens (they're in the path), so
+# requests are logged by Rails only, after PushTokenFilter (ADR 0012).
 ENV RAILS_ENV="production" \
     BUNDLE_DEPLOYMENT="1" \
     BUNDLE_PATH="/usr/local/bundle" \
     BUNDLE_WITHOUT="development" \
     LD_PRELOAD="/usr/local/lib/libjemalloc.so" \
-    SOLID_QUEUE_IN_PUMA="1"
+    SOLID_QUEUE_IN_PUMA="1" \
+    LOG_REQUESTS="false"
 
 # Throw-away build stage to reduce size of final image
 FROM base AS build

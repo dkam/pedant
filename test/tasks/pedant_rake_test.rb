@@ -6,6 +6,15 @@ class PedantRakeTest < ActiveSupport::TestCase
     Rails.application.load_tasks if Rake::Task.tasks.none? { |task| task.name.start_with?("pedant:") }
   end
 
+  test "push_token prints a new token, the digest for monitors.yml, and the push URL" do
+    output = run_task("pedant:push_token")
+
+    token = output[%r{/api/push/([A-Za-z0-9_-]{32,})}, 1]
+    assert token
+    assert_includes output, "push: sha256:#{Digest::SHA256.hexdigest(token)}"
+    assert_not_equal token, run_task("pedant:push_token")[%r{/api/push/([A-Za-z0-9_-]{32,})}, 1]
+  end
+
   test "reset_password removes the password, signs out, and reopens setup" do
     owner = User.create!(email: "dan@example.com", password: "a long enough password", password_confirmation: "a long enough password")
     token = owner.session_token

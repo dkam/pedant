@@ -44,7 +44,7 @@
           <tr data-monitor="<%= monitor.key %>">
             <td class="px-4 py-3">
               <%= link_to monitor.name, monitor_path(monitor), class: "font-medium hover:underline" %>
-              <div class="max-w-xs truncate text-xs text-stone-500 sm:max-w-md"><%= monitor.target %></div>
+              <div class="max-w-xs truncate text-xs text-stone-500 sm:max-w-md"><%= monitor_target(monitor) %></div>
               <% if monitor.state != "up" && monitor.last_message.present? %>
                 <div class="text-xs text-red-700"><%= monitor.last_message %></div>
               <% elsif monitor.retrying? %>
