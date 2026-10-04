@@ -8,7 +8,9 @@ class PasswordSessionsController < ApplicationController
   def create
     return redirect_to(login_path) unless SignInMethod.password?
 
-    # authenticate_by takes the same time whether or not the email exists.
+    # authenticate_by hashes the password whether or not the email exists, so
+    # timing doesn't say which emails do. (A blank password returns at once,
+    # before any lookup, which reveals nothing.)
     user = User.with_password.authenticate_by(email: params[:email].to_s, password: params[:password].to_s)
     if user
       return_to = session.delete(:return_to)

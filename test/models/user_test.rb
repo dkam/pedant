@@ -65,4 +65,11 @@ class UserTest < ActiveSupport::TestCase
 
     assert_equal "dan@example.com", user.email
   end
+
+  test "a user signs in with a password or an OIDC identity, never both" do
+    user = User.new(email: "dan@example.com", password: "a long enough password", password_confirmation: "a long enough password",
+      oidc_issuer: FakeOidcProvider::ISSUER, oidc_sub: "owner-sub")
+
+    assert_not user.valid?
+  end
 end

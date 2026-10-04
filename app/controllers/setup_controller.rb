@@ -30,9 +30,12 @@ class SetupController < ApplicationController
   end
 
   def create_password
+    # An owner kept by pedant:reset_oidc still carries its old identity. Choosing
+    # a password replaces it: a user signs in one way, never both. Assigned
+    # before the code is checked, so a wrong code keeps what was typed.
+    @owner.assign_attributes(password_params.merge(oidc_issuer: nil, oidc_sub: nil))
     return wrong_code(@owner) unless Setup.correct?(params[:code])
 
-    @owner.assign_attributes(password_params)
     # has_secure_password ignores a blank password rather than failing it, and
     # an owner kept from OIDC would then save with no password at all.
     @owner.errors.add(:password, "can't be blank") if password_params[:password].blank?

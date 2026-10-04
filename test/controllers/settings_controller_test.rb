@@ -162,7 +162,73 @@ class SettingsControllerTest < ActionDispatch::IntegrationTest
     assert_response :not_found
   end
 
+  test "a failed change shows its error in its own form" do
+    sign_in_with_password
+
+    patch settings_password_url, params: { current_password: "wrong wrong wrong", user: new_password }
+    assert_select "[data-section=password] .alert", /current password didn't match/
+    assert_select "[data-section=email] .alert", 0
+
+    patch settings_email_url, params: { current_password: "wrong wrong wrong", user: { email: "new@example.com" } }
+    assert_select "[data-section=email] .alert", /current password didn't match/
+    assert_select "[data-section=password] .alert", 0
+  end
+
+  test "a rejected email isn't shown as the owner's name" do
+    sign_in_with_password
+
+    patch settings_email_url, params: { current_password: "a long enough password", user: { email: "nope" } }
+
+    assert_select "header", text: /nope/, count: 0
+    assert_select "header a", "dan@example.com"
+    assert_select "[data-section=email] input[name='user[email]'][value=nope]"
+  end
+
+  test "an email change with no email isn't reported as a change" do
+    sign_in_with_password
+
+    patch settings_email_url, params: { current_password: "a long enough password" }
+
+    assert_response :bad_request
+    assert_equal "dan@example.com", @owner.reload.email
+  end
+
+  # pedant:reset_oidc keeps the owner, OIDC identity and all, and setup then
+  # gives that same owner a password.
+  test "after an OIDC reset and a password setup, an abandoned switch back to OIDC leaves the password working" do
+    owner_from_oidc_then_password!
+    sign_in_with_password
+    post settings_oidc_url, params: { current_password: "a long enough password", oidc_provider: @provider.provider_attributes }
+    delete logout_url
+
+    sign_in_with_password
+
+    get root_url
+    assert_response :success
+  end
+
+  test "after an OIDC reset and a password setup, switching back to the same identity removes the password" do
+    owner_from_oidc_then_password!
+    sign_in_with_password
+    post settings_oidc_url, params: { current_password: "a long enough password", oidc_provider: @provider.provider_attributes }
+
+    log_in(sub: "owner-sub", email: "not an email address")
+
+    assert_nil @owner.reload.password_digest
+    get root_url
+    assert_response :success
+  end
+
   private
+    def owner_from_oidc_then_password!
+      User.delete_all
+      @owner = User.create!(oidc_issuer: FakeOidcProvider::ISSUER, oidc_sub: "owner-sub")
+      OidcProvider.delete_all # what pedant:reset_oidc does to the provider
+      post setup_password_url, params: { code: Setup.code, user: { email: "dan@example.com", password: "a long enough password", password_confirmation: "a long enough password" } }
+      assert_response :redirect
+      delete logout_url
+    end
+
     def new_password
       { password: "an even longer password", password_confirmation: "an even longer password" }
     end

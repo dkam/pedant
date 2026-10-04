@@ -59,9 +59,14 @@ class User < ApplicationRecord
   end
 
   private
+    # Exactly one way in. Both at once would count the owner as an OIDC user
+    # while their password is still the way in (see SignInMethod).
     def can_sign_in
-      return if password_digest.present? || (oidc_issuer.present? && oidc_sub.present?)
-
-      errors.add(:password, "can't be blank")
+      identity = oidc_issuer.present? && oidc_sub.present?
+      if password_digest.present? && identity
+        errors.add(:base, "A user signs in with a password or OIDC, not both")
+      elsif password_digest.blank? && !identity
+        errors.add(:password, "can't be blank")
+      end
     end
 end

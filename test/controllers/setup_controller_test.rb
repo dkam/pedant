@@ -267,6 +267,14 @@ class SetupControllerTest < ActionDispatch::IntegrationTest
     assert Setup.open?
   end
 
+  test "a wrong setup code keeps the email that was typed" do
+    post setup_password_url, params: password_params(code: "WRONGCODE", email: "dan@example.com")
+
+    assert_response :unprocessable_content
+    assert_select "input[name='user[email]'][value=?]", "dan@example.com"
+    assert_not User.exists?
+  end
+
   private
     def password_params(code: Setup.code, email: "dan@example.com", password: "a long enough password", confirmation: password)
       { code: code, user: { email: email, password: password, password_confirmation: confirmation } }

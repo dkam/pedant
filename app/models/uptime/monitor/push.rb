@@ -1,4 +1,4 @@
-# What a push monitor does beyond up and down (ADR 0012):
+# What a push monitor does beyond up and down (ADR 0019):
 #
 # - A value (value=87), judged against the limits monitors.yml gives it. The
 #   limits live in git, never in the push, so a script can't loosen its own.
