@@ -1,0 +1,47 @@
+<section class="mt-8 rounded-lg border border-stone-200 bg-white p-6">
+  <h2 class="text-lg font-semibold">Monitor sources</h2>
+  <p class="mt-1 text-sm text-stone-600">
+    Checkouts of your stacks repos. Pedant reads <code class="font-mono">monitors.yml</code> at the top and in each
+    stack's folder, every minute. Keep the checkout up to date and the monitors follow.
+  </p>
+
+  <% sources.each do |source| %>
+    <div data-source class="mt-5 rounded-md border border-stone-200 p-4">
+      <%= form_with model: source, url: source_path(source), method: :patch, class: "space-y-3" do |form| %>
+        <div class="flex items-baseline justify-between gap-2">
+          <span class="font-medium"><%= source.name %></span>
+          <span class="text-xs text-stone-500">
+            <%= source.synced_at ? "Synced #{time_ago_in_words(source.synced_at)} ago" : "Not synced yet" %>
+            · <%= pluralize(source.monitors.active.count, "monitor") %>
+          </span>
+        </div>
+        <%= render "shared/errors", record: source %>
+        <div>
+          <%= form.label :path, "Path", class: "label", for: "source_#{source.id}_path" %>
+          <%= form.text_field :path, class: "field font-mono", id: "source_#{source.id}_path" %>
+        </div>
+        <% if source.sync_errors.present? %>
+          <ul class="alert list-disc space-y-1 pl-8 font-mono text-xs">
+            <% source.sync_error_list.each do |error| %><li><%= error %></li><% end %>
+          </ul>
+        <% end %>
+        <%= form.submit "Save path", class: "btn" %>
+      <% end %>
+      <%= button_to "Sync now", sync_source_path(source), class: "mt-2 text-sm underline" %>
+    </div>
+  <% end %>
+
+  <%= form_with model: new_source, url: sources_path, method: :post, class: "mt-5 space-y-5" do |form| %>
+    <%= render "shared/errors", record: new_source %>
+    <div>
+      <%= form.label :name, "Name", class: "label" %>
+      <%= form.text_field :name, required: true, placeholder: "koti-stacks", class: "field" %>
+    </div>
+    <div>
+      <%= form.label :path, "Path to the checkout", class: "label" %>
+      <%= form.text_field :path, required: true, placeholder: "/srv/koti-stacks", class: "field font-mono" %>
+      <p class="hint">An absolute path on the machine Pedant runs on.</p>
+    </div>
+    <%= form.submit "Add source", class: "btn" %>
+  <% end %>
+</section>

@@ -1,0 +1,3 @@
+<%# A monitor's state as a coloured badge. %>
+<% colours = { "up" => "bg-green-100 text-green-800", "down" => "bg-red-100 text-red-800", "unknown" => "bg-amber-100 text-amber-800", "pending" => "bg-stone-100 text-stone-600" } %>
+<span data-state="<%= state %>" class="inline-block rounded-full px-2 py-0.5 text-xs font-medium <%= colours.fetch(state, colours["pending"]) %>"><%= state %></span>

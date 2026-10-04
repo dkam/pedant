@@ -23,5 +23,12 @@ Rails.application.routes.draw do
   patch "settings/password", to: "settings#update_password", as: :settings_password
   post  "settings/oidc",     to: "settings#link_oidc",       as: :settings_oidc
 
+  # Monitors are defined in git (ADR 0016): Pedant shows them and edits only
+  # where it reads them from.
+  resources :monitors, only: :show
+  resources :sources, only: %i[ create update ] do
+    post :sync, on: :member
+  end
+
   root "dashboard#show"
 end

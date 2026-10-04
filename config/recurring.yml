@@ -1,18 +1,22 @@
-# examples:
-#   periodic_cleanup:
-#     class: CleanSoftDeletedRecordsJob
-#     queue: background
-#     args: [ 1000, { batch_size: 500 } ]
-#     schedule: every hour
-#   periodic_cleanup_with_command:
-#     command: "SoftDeletedRecord.due.delete_all"
-#     priority: 2
-#     schedule: at 5am every day
-
-production:
+# Uptime checks run in development too, so bin/dev shows real monitors.
+development: &uptime
+  schedule_checks:
+    class: Uptime::ScheduleChecksJob
+    queue: checks
+    schedule: every 15 seconds
+  sync_monitor_sources:
+    class: Uptime::SyncSourcesJob
+    schedule: every minute
+  prune_checks:
+    command: "Uptime::Check.prune"
+    schedule: every day at 3:41am
+  # Every check is a job, and the scheduler runs every 15 seconds; clear them hourly.
   clear_solid_queue_finished_jobs:
     command: "SolidQueue::Job.clear_finished_in_batches(sleep_between_batches: 0.3)"
     schedule: every hour at minute 12
+
+production:
+  <<: *uptime
   # Backchannel-logout mappings outlive their sessions on purpose (see
   # OidcSession#invalidate!); this sweeps them once they're expired.
   clear_expired_oidc_sessions:

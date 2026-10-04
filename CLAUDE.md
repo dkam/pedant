@@ -40,8 +40,12 @@ doco-cd isn't installed on any host yet, so nothing here may depend on its API.
 Kuma does two things, and Pedant replaces both. Seed both from Kuma's export
 (Pedant issue #1), which hasn't been done yet.
 
+- **Monitors are defined in git** (ADR 0016): a `monitors.yml` at the top of a
+  stacks repo, or in a stack's folder. Pedant syncs them from a checkout every
+  minute and keeps only what it observed. Its UI never edits them.
 - **Active checks:** HTTP (and TCP, TLS expiry) on a schedule, storing up/down,
-  when it last changed, and how often it flaps.
+  when it last changed, and how often it flaps. Code is in `app/models/uptime/`
+  (namespaced: a top-level `Monitor` collides with Ruby's).
 - **Push monitors:** jobs call `/api/push/<token>?status=up|down&msg=…&ping=…`,
   Kuma's own URL shape, so moving a job means changing only the hostname in
   its curl. Silence past the interval means missed.
@@ -135,7 +139,9 @@ Not Postgres, not Redis, not Sidekiq.
 
 ## Development
 
-`bin/dev` serves on **port 3036** (clinch is on 3035). Clinch's redirect URI for
+`bin/dev` serves on **port 3036** (clinch is on 3035), and runs `bin/jobs`, so
+checks run in development as they do in production (Solid Queue and Solid
+Cable have their own development databases). Clinch's redirect URI for
 a local Pedant is `http://localhost:3036/auth/callback`. While setup is open,
 starting the server prints the setup code; `bin/rails pedant:setup_code` prints it again, and
 `pedant:reset_password` and `pedant:reset_oidc` reopen it.

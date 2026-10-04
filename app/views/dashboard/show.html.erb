@@ -1,6 +1,65 @@
 <% content_for :title, "Pedant" %>
+<%= turbo_stream_from :monitors %>
 
-<h1 class="text-2xl font-semibold">Pedant</h1>
-<p class="mt-2 text-stone-600">
-  Signed in as <%= current_user.display_name %>. Monitors arrive next.
-</p>
+<div class="flex items-baseline justify-between">
+  <h1 class="text-2xl font-semibold">Monitors</h1>
+  <% if @monitors.any? %>
+    <p class="text-sm text-stone-600">
+      <% counts = @monitors.group_by(&:state).transform_values(&:size) %>
+      <%= %w[ down unknown pending up ].filter_map { |state| "#{counts[state]} #{state}" if counts[state] }.join(" · ") %>
+    </p>
+  <% end %>
+</div>
+
+<% @sources.select { |source| source.sync_errors.present? }.each do |source| %>
+  <div class="alert mt-6">
+    <p class="font-medium">Some of <%= source.name %>'s monitors.yml couldn't be applied. The last good definitions are still in use.</p>
+    <ul class="mt-2 list-disc space-y-1 pl-4 font-mono text-xs">
+      <% source.sync_error_list.each do |error| %><li><%= error %></li><% end %>
+    </ul>
+  </div>
+<% end %>
+
+<% if @sources.none? %>
+  <div class="mt-8 rounded-lg border border-stone-200 bg-white p-6 text-sm text-stone-600">
+    Monitors are defined in a <code class="font-mono">monitors.yml</code> in your stacks repo.
+    <%= link_to "Add the repo's checkout as a source", settings_path, class: "underline" %> and Pedant will read it.
+  </div>
+<% elsif @monitors.none? %>
+  <p class="mt-8 text-sm text-stone-600">No monitors defined yet. Add some to a <code class="font-mono">monitors.yml</code>.</p>
+<% else %>
+  <div class="mt-6 overflow-hidden rounded-lg border border-stone-200 bg-white">
+    <table class="w-full text-sm">
+      <thead class="bg-stone-50 text-left text-xs uppercase tracking-wide text-stone-500">
+        <tr>
+          <th class="px-4 py-2">Monitor</th>
+          <th class="px-4 py-2">State</th>
+          <th class="hidden px-4 py-2 sm:table-cell">Since</th>
+          <th class="hidden px-4 py-2 md:table-cell">Down in 24h</th>
+          <th class="hidden px-4 py-2 md:table-cell">Latency</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-stone-100">
+        <% @monitors.each do |monitor| %>
+          <tr data-monitor="<%= monitor.key %>">
+            <td class="px-4 py-3">
+              <%= link_to monitor.name, monitor_path(monitor), class: "font-medium hover:underline" %>
+              <div class="max-w-xs truncate text-xs text-stone-500 sm:max-w-md"><%= monitor.target %></div>
+              <% if monitor.state != "up" && monitor.last_message.present? %>
+                <div class="text-xs text-red-700"><%= monitor.last_message %></div>
+              <% elsif monitor.retrying? %>
+                <div class="text-xs text-amber-700">Retrying (<%= monitor.consecutive_failures %> of <%= monitor.retries %>): <%= monitor.last_message %></div>
+              <% end %>
+            </td>
+            <td class="px-4 py-3"><%= render "monitors/state", state: monitor.state %></td>
+            <td class="hidden px-4 py-3 text-stone-600 sm:table-cell">
+              <%= monitor.state_changed_at ? time_ago_in_words(monitor.state_changed_at) : "–" %>
+            </td>
+            <td class="hidden px-4 py-3 text-stone-600 md:table-cell"><%= monitor.flaps %></td>
+            <td class="hidden px-4 py-3 text-stone-600 md:table-cell"><%= monitor.last_latency_ms ? "#{monitor.last_latency_ms} ms" : "–" %></td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+<% end %>

@@ -112,3 +112,7 @@ without Gitea access. The issue remains the place for discussion.
   lets setup choose a password for one owner, or OIDC, and only the chosen one
   works. Switching from a password to OIDC is in settings; the console resets
   either.
+- [`decisions/0016-monitors-defined-in-git.md`](decisions/0016-monitors-defined-in-git.md)
+  defines monitors in a `monitors.yml` in the stacks repos. Pedant syncs from
+  it and keeps only observed state. Removing an entry retires the monitor;
+  push tokens go in as digests.
