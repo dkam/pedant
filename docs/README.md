@@ -129,3 +129,6 @@ without Gitea access. The issue remains the place for discussion.
   alerts once per outage (down, reminders, recovery), never for unknown, with
   per-monitor `remind_every`, encrypted channel secrets, and every delivery
   attempt recorded.
+- [`decisions/0021-tcp-monitors.md`](decisions/0021-tcp-monitors.md) adds
+  `tcp: host:port` monitors, which only check that the port accepts a
+  connection.

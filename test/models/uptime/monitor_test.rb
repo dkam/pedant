@@ -143,6 +143,18 @@ class Uptime::MonitorTest < ActiveSupport::TestCase
     end
   end
 
+  test "a tcp monitor's check dials its host and port" do
+    source = monitor_source("monitors.yml" => { "redis" => { "tcp" => "100.111.0.120:6378", "timeout" => 3 } })
+    source.sync!
+    dialled = nil
+    original, Uptime::TcpCheck.dial = Uptime::TcpCheck.dial, ->(*args) { dialled = args }
+
+    assert_equal "up", source.monitors.sole.check.status
+    assert_equal [ "100.111.0.120", 6378, 3 ], dialled
+  ensure
+    Uptime::TcpCheck.dial = original
+  end
+
   private
     def result(status, latency_ms: nil, message: nil)
       Uptime::Result.new(status: status, latency_ms: latency_ms, message: message)

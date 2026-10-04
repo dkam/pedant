@@ -14,7 +14,7 @@ class Uptime::Monitor < ApplicationRecord
   include Push, Outages
 
   STATES = %w[ pending up warn down unknown ].freeze
-  KINDS = %w[ http push ].freeze
+  KINDS = %w[ http tcp push ].freeze
 
   belongs_to :source
   has_many :checks, dependent: :delete_all
@@ -86,6 +86,7 @@ class Uptime::Monitor < ApplicationRecord
   def check
     case kind
     when "http" then Uptime::HttpCheck.new(target: target, timeout: timeout, options: options).call
+    when "tcp" then Uptime::TcpCheck.new(target: target, timeout: timeout).call
     when "push" then missed_push
     end
   end

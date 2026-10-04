@@ -226,4 +226,33 @@ class Uptime::SourceTest < ActiveSupport::TestCase
       source.monitors.to_h { |monitor| [ monitor.key, monitor.options["remind_every"] ] })
     assert_match(/bad: .*remind_every/, source.sync_error_list.join)
   end
+  test "a tcp monitor dials host:port, with the active-check defaults" do
+    source = monitor_source("monitors.yml" => { "pg01" => { "name" => "PG01 PSQL", "tcp" => "100.122.23.60:5432", "interval" => "1m", "retries" => 1 } })
+
+    source.sync!
+
+    assert_empty source.sync_error_list
+    monitor = source.monitors.sole
+    assert_equal [ "tcp", "100.122.23.60:5432", 60, 10, 1 ], [ monitor.kind, monitor.target, monitor.interval, monitor.timeout, monitor.retries ]
+    assert_equal({ "remind_every" => 86_400 }, monitor.options)
+  end
+
+  test "tcp entries are checked" do
+    {
+      "pg01" => /host:port/,
+      "pg01:" => /host:port/,
+      ":5432" => /host:port/,
+      "pg01:99999" => /port/,
+      "http://pg01:5432" => /host:port/
+    }.each do |target, pattern|
+      source = monitor_source("monitors.yml" => { "db" => { "tcp" => target } })
+      source.sync!
+      assert_empty source.monitors, "expected #{target.inspect} to be refused"
+      assert_match pattern, source.sync_error_list.join
+    end
+
+    source = monitor_source("monitors.yml" => { "db" => { "tcp" => "pg01:5432", "expect_status" => "200" } })
+    source.sync!
+    assert_match(/unknown field.*expect_status/, source.sync_error_list.join)
+  end
 end

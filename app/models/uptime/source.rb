@@ -11,14 +11,18 @@ class Uptime::Source < ApplicationRecord
   KINDS = Uptime::Monitor::KINDS
   FIELDS = {
     "http" => %w[ name interval timeout retries expect_status tls_verify remind_every ],
+    "tcp" => %w[ name interval timeout retries remind_every ],
     "push" => %w[ name interval schedule timezone grace max_runtime value remind_every ]
   }.freeze
   DEFAULTS = {
     "http" => { "interval" => 60, "timeout" => 10, "retries" => 1, "expect_status" => "200-299", "tls_verify" => true, "remind_every" => 86_400 },
+    "tcp" => { "interval" => 60, "timeout" => 10, "retries" => 1, "remind_every" => 86_400 },
     "push" => { "grace" => 60, "remind_every" => 86_400 }
   }.freeze
   MIN_INTERVAL = 20
   DIGEST = /\Asha256:[0-9a-f]{64}\z/
+  # host:port, or [v6 address]:port.
+  HOST_PORT = /\A(?:[A-Za-z0-9.-]+|\[[0-9A-Fa-f:]+\]):(\d+)\z/
   VALUE_FIELDS = %w[ label unit warn_above warn_below down_above down_below ].freeze
   # 30s, 5m, 3h, 1d, or plain seconds.
   DURATION = /\A(\d+)\s*(s|m|h|d)\z/
@@ -125,7 +129,11 @@ class Uptime::Source < ApplicationRecord
       %w[ interval timeout grace max_runtime remind_every ].each { |field| settings[field] = seconds(settings[field]) if settings.key?(field) }
       settings["remind_every"] = nil if entry["remind_every"] == "never"
       target = entry[kind].to_s
-      problems.concat(kind == "http" ? http_problems(target, settings) : push_problems(target, entry, settings))
+      problems.concat case kind
+      when "http" then http_problems(target, settings)
+      when "tcp" then tcp_problems(target, settings)
+      when "push" then push_problems(target, entry, settings)
+      end
       problems << "remind_every must be a duration of at least 5 minutes, or never" unless settings["remind_every"].nil? || (settings["remind_every"].is_a?(Integer) && settings["remind_every"] >= 300)
 
       definition = {
@@ -141,13 +149,29 @@ class Uptime::Source < ApplicationRecord
     def http_problems(target, settings)
       problems = []
       problems << "http must be an http:// or https:// URL" unless web_url?(target)
-      problems.concat whole_numbers(settings, %w[ interval timeout retries ])
+      problems.concat timing_problems(settings)
+      problems << "expect_status must look like 200-299, 401" unless settings["expect_status"].to_s.match?(/\A\s*\d{3}(-\d{3})?(\s*,\s*\d{3}(-\d{3})?)*\s*\z/)
+      problems << "tls_verify must be true or false" unless [ true, false ].include?(settings["tls_verify"])
+      problems
+    end
+
+    def tcp_problems(target, settings)
+      problems = []
+      if (match = HOST_PORT.match(target))
+        problems << "tcp port must be between 1 and 65535" unless match[1].to_i.between?(1, 65_535)
+      else
+        problems << "tcp must be host:port, such as pg01:5432"
+      end
+      problems + timing_problems(settings)
+    end
+
+    # The interval, timeout and retries of an active check.
+    def timing_problems(settings)
+      problems = whole_numbers(settings, %w[ interval timeout retries ])
       if problems.none?
         problems << "interval must be at least #{MIN_INTERVAL} seconds" if settings["interval"] < MIN_INTERVAL
         problems << "timeout must be at least 1 second and less than the interval" unless settings["timeout"].between?(1, settings["interval"] - 1)
       end
-      problems << "expect_status must look like 200-299, 401" unless settings["expect_status"].to_s.match?(/\A\s*\d{3}(-\d{3})?(\s*,\s*\d{3}(-\d{3})?)*\s*\z/)
-      problems << "tls_verify must be true or false" unless [ true, false ].include?(settings["tls_verify"])
       problems
     end
 
