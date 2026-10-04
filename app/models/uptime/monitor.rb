@@ -5,10 +5,15 @@
 # - pending: no conclusive result yet.
 # - up / down: down only once failures in a row exceed `retries`. While
 #   retrying it stays up (#retrying?), so a blip isn't counted as a flap.
+# - warn: a pushed value is past its warn limit. Not a failure, not a flap.
 # - unknown: Pedant couldn't tell, because its own connection was down. It
 #   neither counts as a failure nor clears one.
+#
+# Push monitors' own behaviour (values, runs, schedules) is in Uptime::Monitor::Push.
 class Uptime::Monitor < ApplicationRecord
-  STATES = %w[ pending up down unknown ].freeze
+  include Push
+
+  STATES = %w[ pending up warn down unknown ].freeze
   KINDS = %w[ http push ].freeze
 
   belongs_to :source
@@ -16,8 +21,8 @@ class Uptime::Monitor < ApplicationRecord
   has_many :state_changes, dependent: :delete_all
 
   scope :active, -> { where(retired_at: nil) }
-  # Down first, then unknown and pending, then up; alphabetical within each.
-  scope :by_urgency, -> { in_order_of(:state, %w[ down unknown pending up ]).order(:name) }
+  # Down first, then unknown, warn and pending, then up; alphabetical within each.
+  scope :by_urgency, -> { in_order_of(:state, %w[ down unknown warn pending up ]).order(:name) }
 
   validates :state, inclusion: { in: STATES }
   validates :kind, inclusion: { in: KINDS }
@@ -29,30 +34,25 @@ class Uptime::Monitor < ApplicationRecord
     now = Time.current
 
     transaction do
-      checks.create!(status: result.status, latency_ms: result.latency_ms, message: result.message, checked_at: now)
+      checks.create!(status: result.status, latency_ms: result.latency_ms, message: result.message,
+        value: result.value, duration_ms: result.duration_ms, checked_at: now)
 
       self.consecutive_failures = case result.status
-      when "up" then 0
+      when "up", "warn" then 0
       when "down" then consecutive_failures + 1
       else consecutive_failures
       end
 
       change_state_to next_state(result), message: result.message, at: now
+      self.last_value = result.value unless result.value.nil?
       update!(last_checked_at: now, next_check_at: next_due_from(now), last_latency_ms: result.latency_ms, last_message: result.message)
     end
   end
 
-  # A push arrived (PushesController). A push monitor has no retries: the job
-  # said how it went, so down is down.
-  def record_push(result)
-    self.last_pushed_at = Time.current
-    record(result)
-  end
-
   # When it's next due: an active check one interval on (or now, for a new
-  # one); a push monitor once interval plus grace pass without a push.
+  # one). Push monitors work it out from their interval or schedule.
   def next_due_from(time, first: false)
-    if push? then time + interval + grace
+    if push? then next_push_due_from(time)
     elsif first then time
     else time + interval
     end
@@ -84,22 +84,15 @@ class Uptime::Monitor < ApplicationRecord
   def check
     case kind
     when "http" then Uptime::HttpCheck.new(target: target, timeout: timeout, options: options).call
-    when "push" then Uptime::Result.new(status: "down", message: "No push for #{silent_for.inspect}")
+    when "push" then missed_push
     end
   end
 
   private
-    # To the minute: "1 hour and 10 minutes".
-    def silent_for
-      seconds = Time.current - (last_pushed_at || created_at)
-      ActiveSupport::Duration.build((seconds / 60).round * 60)
-    end
-
     def next_state(result)
       case result.status
-      when "up" then "up"
-      when "unknown" then "unknown"
       when "down" then consecutive_failures > retries ? "down" : state
+      else result.status
       end
     end
 

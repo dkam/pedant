@@ -50,8 +50,9 @@ Kuma does two things, and Pedant replaces both. Seed both from Kuma's export
   Kuma's own URL shape, so moving a job means changing only the hostname in
   its curl. Silence past the interval (plus grace) means missed. monitors.yml
   holds the token's SHA-256 digest, never the token; `bin/rails
-  pedant:push_token` makes a pair. The token never reaches a log (ADR 0012's
-  amendment).
+  pedant:push_token` makes a pair. The token never reaches a log. Pushes can
+  carry a value (limits and unit in monitors.yml), mark a run's start, and
+  follow a cron schedule (ADR 0012's amendments; `Uptime::Monitor::Push`).
 - **Splat's check-ins:** splat keeps the Rails apps' own job check-ins. Pedant
   only shows their state.
 - **Pedant's own outages:**

@@ -11,7 +11,11 @@
   <div><dt class="text-stone-500">Since</dt><dd><%= @monitor.state_changed_at ? time_ago_in_words(@monitor.state_changed_at) : "–" %></dd></div>
   <div><dt class="text-stone-500">Down in 24h / 7d</dt><dd><%= @monitor.flaps %> / <%= @monitor.flaps(within: 7.days) %></dd></div>
   <% if @monitor.push? %>
-    <div><dt class="text-stone-500">Missed after</dt><dd><%= seconds_in_words(@monitor.interval + @monitor.grace) %> of silence</dd></div>
+    <% if @monitor.scheduled? %>
+      <div><dt class="text-stone-500">Expected</dt><dd class="font-mono text-xs"><%= @monitor.schedule_in_words %></dd><dd>plus <%= seconds_in_words(@monitor.grace) %> grace</dd></div>
+    <% else %>
+      <div><dt class="text-stone-500">Missed after</dt><dd><%= seconds_in_words(@monitor.interval + @monitor.grace) %> of silence</dd></div>
+    <% end %>
   <% else %>
     <div><dt class="text-stone-500">Every</dt><dd><%= @monitor.interval %>s, <%= @monitor.timeout %>s timeout, <%= pluralize(@monitor.retries, "retry") %></dd></div>
   <% end %>
@@ -26,9 +30,28 @@
       wherever the job's secrets are (<code class="font-mono">bin/rails pedant:push_token</code> makes a new one).
     </p>
     <pre class="mt-3 overflow-x-auto rounded bg-stone-100 p-3 font-mono text-xs">curl -fsS "<%= request.base_url %>/api/push/&lt;token&gt;?status=up&amp;msg=OK"</pre>
-    <p class="mt-2 text-stone-600"><code class="font-mono">status=down</code> marks it down straight away; <code class="font-mono">msg</code> and <code class="font-mono">ping</code> are kept with the check.</p>
+    <p class="mt-2 text-stone-600"><code class="font-mono">status=down</code> marks it down straight away; <code class="font-mono">msg</code> and <code class="font-mono">ping</code> are kept with the check.
+      <% if @monitor.value_settings.any? %><code class="font-mono">value=</code> is judged against the limits in monitors.yml.<% end %>
+      <code class="font-mono">status=start</code> at the start of a run records how long it takes<%= @monitor.max_runtime ? ", and marks it down if it runs past #{seconds_in_words(@monitor.max_runtime)}" : "" %>.</p>
+    <% if @monitor.started_at %><p class="mt-2 text-amber-700">Running since <%= time_ago_in_words(@monitor.started_at) %> ago.</p><% end %>
   </section>
 <% end %>
+
+<div class="mt-6 grid gap-4 md:grid-cols-2">
+  <% if @monitor.push? %>
+    <% value = @monitor.value_settings %>
+    <% if value.any? %>
+      <%= line_chart @chart_checks.map(&:value), kind: "value",
+            title: [ value["label"].presence || "Value", ("(#{value["unit"]})" if value["unit"].present?) ].compact.join(" "),
+            limits: value.slice("warn_above", "warn_below").values.map { |limit| [ limit, "warn" ] } +
+                    value.slice("down_above", "down_below").values.map { |limit| [ limit, "down" ] },
+            format: ->(number) { @monitor.format_value(number) } %>
+    <% end %>
+    <%= duration_chart @chart_checks.map(&:duration_ms) %>
+  <% else %>
+    <%= line_chart @chart_checks.map(&:latency_ms), kind: "latency", title: "Latency (ms)", format: ->(number) { "#{number} ms" } %>
+  <% end %>
+</div>
 
 <div class="mt-8 grid gap-8 md:grid-cols-2">
   <section>

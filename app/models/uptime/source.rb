@@ -11,7 +11,7 @@ class Uptime::Source < ApplicationRecord
   KINDS = Uptime::Monitor::KINDS
   FIELDS = {
     "http" => %w[ name interval timeout retries expect_status tls_verify ],
-    "push" => %w[ name interval grace ]
+    "push" => %w[ name interval schedule timezone grace max_runtime value ]
   }.freeze
   DEFAULTS = {
     "http" => { "interval" => 60, "timeout" => 10, "retries" => 1, "expect_status" => "200-299", "tls_verify" => true },
@@ -19,6 +19,10 @@ class Uptime::Source < ApplicationRecord
   }.freeze
   MIN_INTERVAL = 20
   DIGEST = /\Asha256:[0-9a-f]{64}\z/
+  VALUE_FIELDS = %w[ label unit warn_above warn_below down_above down_below ].freeze
+  # 30s, 5m, 3h, 1d, or plain seconds.
+  DURATION = /\A(\d+)\s*(s|m|h|d)\z/
+  DURATION_UNITS = { "s" => 1, "m" => 60, "h" => 3600, "d" => 86_400 }.freeze
 
   has_many :monitors, dependent: :restrict_with_error
 
@@ -118,6 +122,7 @@ class Uptime::Source < ApplicationRecord
       problems << "unknown #{"field".pluralize(unknown.size)} for a #{kind} monitor: #{unknown.join(", ")}" if unknown.any?
 
       settings = DEFAULTS.fetch(kind).merge(entry)
+      %w[ interval timeout grace max_runtime ].each { |field| settings[field] = seconds(settings[field]) if settings.key?(field) }
       target = entry[kind].to_s
       problems.concat(kind == "http" ? http_problems(target, settings) : push_problems(target, entry, settings))
 
@@ -126,7 +131,7 @@ class Uptime::Source < ApplicationRecord
         kind: kind, target: target,
         interval: settings["interval"],
         timeout: settings.fetch("timeout", 0), retries: settings.fetch("retries", 0), grace: settings.fetch("grace", 0),
-        options: settings.slice("expect_status", "tls_verify")
+        options: settings.slice("expect_status", "tls_verify", "schedule", "timezone", "max_runtime", "value")
       }
       [ definition, problems ]
     end
@@ -148,10 +153,42 @@ class Uptime::Source < ApplicationRecord
     def push_problems(target, entry, settings)
       problems = []
       problems << "push must be the token's digest, sha256: and 64 hex digits, not the token (bin/rails pedant:push_token makes both)" unless target.match?(DIGEST)
-      return problems << "push needs an interval: the most seconds expected between pushes" unless entry.key?("interval")
 
-      problems.concat whole_numbers(settings, %w[ interval grace ])
-      problems << "interval must be at least #{MIN_INTERVAL} seconds" if problems.none? && settings["interval"] < MIN_INTERVAL
+      if entry.key?("interval") == entry.key?("schedule")
+        problems << "push needs an interval or a schedule, not both: when a push is expected"
+      elsif entry.key?("schedule")
+        problems.concat schedule_problems(settings["schedule"], settings["timezone"])
+      else
+        problems << "timezone only goes with a schedule" if entry.key?("timezone")
+        problems.concat whole_numbers(settings, %w[ interval ])
+        problems << "interval must be at least #{MIN_INTERVAL} seconds" if problems.none? && settings["interval"] < MIN_INTERVAL
+      end
+
+      problems.concat whole_numbers(settings, %w[ grace ])
+      problems.concat whole_numbers(settings, %w[ max_runtime ]) if settings.key?("max_runtime")
+      problems.concat value_problems(settings["value"]) if settings.key?("value")
+      problems
+    end
+
+    def schedule_problems(schedule, timezone)
+      return [ "a schedule needs a timezone, such as Australia/Sydney" ] if timezone.blank?
+      return [ "timezone #{timezone} isn't a time zone Pedant knows" ] unless TZInfo::Timezone.all_identifiers.include?(timezone.to_s)
+      return [ "schedule #{schedule.inspect} isn't a cron schedule (minute hour day month weekday)" ] unless Fugit.parse_cron("#{schedule} #{timezone}").is_a?(Fugit::Cron)
+      []
+    end
+
+    def value_problems(value)
+      return [ "value should be a map (label, unit, and limits)" ] unless value.is_a?(Hash)
+
+      problems = []
+      unknown = value.keys.map(&:to_s) - VALUE_FIELDS
+      problems << "value has an unknown #{"setting".pluralize(unknown.size)} #{unknown.join(", ")}" if unknown.any?
+      limits = value.slice(*VALUE_FIELDS.grep(/_/))
+      limits.each { |name, limit| problems << "value #{name} must be a number" unless limit.is_a?(Numeric) }
+      return problems if problems.any?
+
+      problems << "value warn_above must be below down_above" if limits["warn_above"] && limits["down_above"] && limits["warn_above"] >= limits["down_above"]
+      problems << "value warn_below must be above down_below" if limits["warn_below"] && limits["down_below"] && limits["warn_below"] <= limits["down_below"]
       problems
     end
 
@@ -164,6 +201,12 @@ class Uptime::Source < ApplicationRecord
       else
         []
       end
+    end
+
+    # A duration as seconds, or the original (for the error) if it isn't one.
+    def seconds(duration)
+      match = DURATION.match(duration.to_s.strip) if duration.is_a?(String)
+      match ? match[1].to_i * DURATION_UNITS.fetch(match[2]) : duration
     end
 
     def whole_numbers(settings, fields)

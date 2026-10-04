@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_04_023001) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_04_030018) do
   create_table "oidc_providers", force: :cascade do |t|
     t.string "issuer", null: false
     t.string "client_id", null: false
@@ -38,6 +38,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_04_023001) do
     t.integer "latency_ms"
     t.string "message"
     t.datetime "checked_at", null: false
+    t.float "value"
+    t.integer "duration_ms"
     t.index ["checked_at"], name: "index_uptime_checks_on_checked_at"
     t.index ["monitor_id", "checked_at"], name: "index_uptime_checks_on_monitor_id_and_checked_at"
   end
@@ -52,7 +54,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_04_023001) do
     t.string "name", null: false
     t.string "kind", null: false
     t.string "target", null: false
-    t.integer "interval", null: false
+    t.integer "interval"
     t.integer "timeout", null: false
     t.integer "retries", null: false
     t.json "options", default: {}, null: false
@@ -69,6 +71,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_04_023001) do
     t.datetime "updated_at", null: false
     t.integer "grace", default: 0, null: false
     t.datetime "last_pushed_at"
+    t.float "last_value"
+    t.datetime "started_at"
     t.index ["kind", "target"], name: "index_uptime_monitors_on_kind_and_target"
     t.index ["next_check_at"], name: "index_uptime_monitors_on_next_check_at"
     t.index ["source_id", "key"], name: "index_uptime_monitors_on_source_id_and_key", unique: true

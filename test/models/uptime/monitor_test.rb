@@ -109,6 +109,23 @@ class Uptime::MonitorTest < ActiveSupport::TestCase
     assert_equal 2, @monitor.state_changes.count
   end
 
+  test "warn is its own state: not a failure, and not a flap" do
+    @monitor.record(result("down"))
+
+    @monitor.record(result("warn", message: "Disk used 85% (over 80%)"))
+
+    assert_equal [ "warn", 0, 0 ], [ @monitor.state, @monitor.consecutive_failures, @monitor.flaps ]
+  end
+
+  test "the dashboard order puts warn after down and unknown, before pending and up" do
+    states = %w[ up pending warn unknown down ]
+    source = monitor_source("monitors.yml" => states.to_h { |state| [ state, { "http" => "http://#{state}.local/" } ] })
+    source.sync!
+    source.monitors.each { |monitor| monitor.update_columns(state: monitor.key) }
+
+    assert_equal %w[ down unknown warn pending up ], source.monitors.by_urgency.pluck(:state)
+  end
+
   # Two scheduler runs that load the same due monitor mustn't both queue it.
   test "a due monitor can be claimed for a check only once" do
     first = Uptime::Monitor.find(@monitor.id)

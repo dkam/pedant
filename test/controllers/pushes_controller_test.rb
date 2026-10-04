@@ -70,12 +70,17 @@ class PushesControllerTest < ActionDispatch::IntegrationTest
     assert_empty @monitor.checks
   end
 
-  test "an http monitor can't be pushed to, even by its target" do
+  # Sync never gives an http monitor a digest as its target; this is the
+  # lookup's second line of defence if a row ever had one.
+  test "an http monitor can't be pushed to, even if its target were a push digest" do
+    token, digest = push_token("token-for-an-http-monitor")
     http = monitor_source({ "monitors.yml" => { "splat" => { "http" => "http://splat.local/" } } }, "other").tap(&:sync!).monitors.sole
+    http.update_columns(target: digest)
 
-    get "/api/push/#{CGI.escape(http.target)}"
+    get "/api/push/#{token}"
 
     assert_response :not_found
+    assert_empty http.checks
   end
 
   test "each token is rate limited" do

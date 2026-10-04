@@ -20,6 +20,9 @@ gem "tailwindcss-rails"
 gem "jbuilder"
 
 # The single-owner password option, through has_secure_password (ADR 0015).
+# Cron schedules for push monitors (ADR 0012). Solid Queue already uses it.
+gem "fugit", "~> 1.11"
+
 gem "bcrypt", "~> 3.1.7"
 
 # Windows does not include zoneinfo files, so bundle the tzinfo-data gem

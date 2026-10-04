@@ -80,4 +80,24 @@ class MonitorsControllerTest < ActionDispatch::IntegrationTest
     assert_includes response.body, "/api/push/&lt;token&gt;"
     assert_not_includes response.body, token
   end
+
+  test "a monitor's page graphs its values in their own unit, its run times, or its latency" do
+    _token, digest = push_token
+    disk = monitor_source({ "monitors.yml" => {
+      "disk" => { "push" => digest, "interval" => 3600, "value" => { "label" => "Disk used", "unit" => "%" } }
+    } }, "other").tap(&:sync!).monitors.sole
+    [ 40, 55, 61 ].each { |value| disk.record_push(Uptime::Result.new(status: "up", value: value, duration_ms: value * 1000)) }
+    [ 12, 30 ].each { |ms| @splat.record(Uptime::Result.new(status: "up", latency_ms: ms)) }
+    sign_in_with_password
+
+    get monitor_url(disk)
+    assert_select "[data-chart=value]", /Disk used \(%\)/
+    assert_select "[data-chart=value] svg polyline"
+    assert_select "[data-chart=value]", /61/
+    assert_select "[data-chart=duration]", /Run time/
+
+    get monitor_url(@splat)
+    assert_select "[data-chart=latency]", /Latency \(ms\)/
+    assert_select "[data-chart=value]", 0
+  end
 end

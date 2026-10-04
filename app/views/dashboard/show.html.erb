@@ -6,7 +6,7 @@
   <% if @monitors.any? %>
     <p class="text-sm text-stone-600">
       <% counts = @monitors.group_by(&:state).transform_values(&:size) %>
-      <%= %w[ down unknown pending up ].filter_map { |state| "#{counts[state]} #{state}" if counts[state] }.join(" · ") %>
+      <%= %w[ down unknown warn pending up ].filter_map { |state| "#{counts[state]} #{state}" if counts[state] }.join(" · ") %>
     </p>
   <% end %>
 </div>
@@ -36,7 +36,7 @@
           <th class="px-4 py-2">State</th>
           <th class="hidden px-4 py-2 sm:table-cell">Since</th>
           <th class="hidden px-4 py-2 md:table-cell">Down in 24h</th>
-          <th class="hidden px-4 py-2 md:table-cell">Latency</th>
+          <th class="hidden px-4 py-2 md:table-cell">Latest</th>
         </tr>
       </thead>
       <tbody class="divide-y divide-stone-100">
@@ -56,7 +56,7 @@
               <%= monitor.state_changed_at ? time_ago_in_words(monitor.state_changed_at) : "–" %>
             </td>
             <td class="hidden px-4 py-3 text-stone-600 md:table-cell"><%= monitor.flaps %></td>
-            <td class="hidden px-4 py-3 text-stone-600 md:table-cell"><%= monitor.last_latency_ms ? "#{monitor.last_latency_ms} ms" : "–" %></td>
+            <td class="hidden px-4 py-3 text-stone-600 md:table-cell"><%= monitor.last_value ? monitor.format_value(monitor.last_value) : (monitor.last_latency_ms ? "#{monitor.last_latency_ms} ms" : "–") %></td>
           </tr>
         <% end %>
       </tbody>

@@ -36,7 +36,19 @@ monitors:
     retries: 1          # failures in a row that are tolerated before "down"
     expect_status: 200-299
     tls_verify: true
+  nas-backup:
+    push: sha256:9f2c…  # the token's digest (bin/rails pedant:push_token)
+    schedule: "0 2 * * *"
+    timezone: Australia/Sydney
+    grace: 1h
+    max_runtime: 3h
+  nas-disk:
+    push: sha256:41ab…
+    interval: 1h
+    value: { label: Disk used, unit: "%", warn_above: 80, down_above: 90 }
 ```
+
+Push fields are described in ADR 0012's amendments.
 
 - **Where:** `monitors.yml` at the repo root, and `<stack>/monitors.yml`
   beside a stack's compose file, so a stack's monitors move or go with it.
