@@ -25,7 +25,8 @@ class Uptime::Source < ApplicationRecord
   # Keys and array indexes joined with dots: queues.fetch.paused, workers.0.alive.
   JSON_PATH = /\A[^.]+(\.[^.]+)*\z/
   HOST_PORT = /\A(?:[A-Za-z0-9.-]+|\[[0-9A-Fa-f:]+\]):(\d+)\z/
-  VALUE_FIELDS = %w[ label unit warn_above warn_below down_above down_below ].freeze
+  VALUE_FIELDS = %w[ label unit warn_above warn_below down_above down_below forecast ].freeze
+  FORECAST_FIELDS = %w[ reaches down_within warn_within ].freeze
   # 30s, 5m, 3h, 1d, or plain seconds.
   DURATION = /\A(\d+)\s*(s|m|h|d)\z/
   DURATION_UNITS = { "s" => 1, "m" => 60, "h" => 3600, "d" => 86_400 }.freeze
@@ -130,6 +131,7 @@ class Uptime::Source < ApplicationRecord
       settings = DEFAULTS.fetch(kind).merge(entry)
       %w[ interval timeout grace max_runtime remind_every ].each { |field| settings[field] = seconds(settings[field]) if settings.key?(field) }
       settings["remind_every"] = nil if entry["remind_every"] == "never"
+      settings["value"] = with_forecast_in_seconds(settings["value"]) if settings.key?("value")
       target = entry[kind].to_s
       problems.concat case kind
       when "http" then http_problems(target, settings)
@@ -229,9 +231,38 @@ class Uptime::Source < ApplicationRecord
       limits.each { |name, limit| problems << "value #{name} must be a number" unless limit.is_a?(Numeric) }
       return problems if problems.any?
 
+      problems.concat forecast_problems(value["forecast"]) if value.key?("forecast")
       problems << "value warn_above must be below down_above" if limits["warn_above"] && limits["down_above"] && limits["warn_above"] >= limits["down_above"]
       problems << "value warn_below must be above down_below" if limits["warn_below"] && limits["down_below"] && limits["warn_below"] <= limits["down_below"]
       problems
+    end
+
+    # A forecast (ADR 0023): the level the value heads for, and how soon
+    # getting there is down or warn.
+    def forecast_problems(forecast)
+      return [ "value forecast should be a map (reaches, down_within, warn_within)" ] unless forecast.is_a?(Hash)
+
+      problems = []
+      unknown = forecast.keys.map(&:to_s) - FORECAST_FIELDS
+      problems << "value forecast has an unknown #{"setting".pluralize(unknown.size)} #{unknown.join(", ")}" if unknown.any?
+      if !forecast.key?("reaches") then problems << "value forecast needs reaches: the level it heads for, such as 0"
+      elsif !forecast["reaches"].is_a?(Numeric) then problems << "value forecast reaches must be a number"
+      end
+
+      withins = forecast.slice("down_within", "warn_within")
+      problems << "value forecast needs down_within or warn_within" if withins.empty?
+      withins.each { |name, within| problems << "value forecast #{name} must be a duration, such as 3d" unless within.is_a?(Integer) && within.positive? }
+      if problems.none? && withins.size == 2 && withins["warn_within"] <= withins["down_within"]
+        problems << "value forecast warn_within must be longer than down_within"
+      end
+      problems
+    end
+
+    def with_forecast_in_seconds(value)
+      return value unless value.is_a?(Hash) && value["forecast"].is_a?(Hash)
+
+      forecast = value["forecast"].to_h { |name, setting| [ name, name.end_with?("_within") ? seconds(setting) : setting ] }
+      value.merge("forecast" => forecast)
     end
 
     # A token must name one monitor, in this repo or any other source.

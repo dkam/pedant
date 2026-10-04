@@ -31,6 +31,25 @@ class Uptime::PushDefinitionTest < ActiveSupport::TestCase
     assert_error(/value.*map/, "push" => @digest, "interval" => 3600, "value" => "87")
   end
 
+  test "a value can have a forecast: the level it heads for, and how soon is warn or down" do
+    monitor = sync("push" => @digest, "interval" => "5m",
+      "value" => { "label" => "Free on /", "unit" => "GB", "forecast" => { "reaches" => 0, "down_within" => "3d", "warn_within" => "14d" } })
+
+    assert_equal({ "reaches" => 0, "down_within" => 259_200, "warn_within" => 1_209_600 }, monitor.value_settings["forecast"])
+  end
+
+  test "forecast settings are checked" do
+    forecast = ->(settings) { { "push" => @digest, "interval" => 3600, "value" => { "forecast" => settings } } }
+
+    assert_error(/forecast.*map/, forecast.("soon"))
+    assert_error(/forecast needs reaches/, forecast.({ "down_within" => "3d" }))
+    assert_error(/forecast reaches must be a number/, forecast.({ "reaches" => "empty", "down_within" => "3d" }))
+    assert_error(/forecast needs down_within or warn_within/, forecast.({ "reaches" => 0 }))
+    assert_error(/forecast down_within must be a duration/, forecast.({ "reaches" => 0, "down_within" => "soon" }))
+    assert_error(/forecast warn_within must be longer than down_within/, forecast.({ "reaches" => 0, "down_within" => "7d", "warn_within" => "3d" }))
+    assert_error(/forecast has an unknown setting window/, forecast.({ "reaches" => 0, "down_within" => "3d", "window" => "1d" }))
+  end
+
   test "a schedule takes the place of an interval, and needs a time zone" do
     monitor = sync("push" => @digest, "schedule" => "0 2 * * 1-5", "timezone" => "Australia/Sydney", "grace" => "30m")
 

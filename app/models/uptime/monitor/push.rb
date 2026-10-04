@@ -2,6 +2,7 @@
 #
 # - A value (value=87), judged against the limits monitors.yml gives it. The
 #   limits live in git, never in the push, so a script can't loosen its own.
+#   A forecast judges where the value is heading too (ADR 0023).
 # - Runs: status=start, then the finish. The duration is kept, and a run
 #   longer than max_runtime is down without waiting for the interval.
 # - A cron schedule in place of an interval, so days off aren't missed.
@@ -9,7 +10,8 @@ module Uptime::Monitor::Push
   extend ActiveSupport::Concern
 
   # Turns a push's parameters into a result. The job's own down wins; then
-  # the down limits, then the warn limits.
+  # the down limits, the forecast's down_within, the warn limits, and the
+  # forecast's warn_within.
   def push_result(status:, value: nil, message: nil, latency_ms: nil)
     number = Float(value) if value.present?
     return Uptime::Result.new(status: "down", message: message || "Job reported down", value: number, latency_ms: latency_ms) if status == "down"
@@ -53,6 +55,23 @@ module Uptime::Monitor::Push
     "#{options["schedule"]} (#{options["timezone"]})" if scheduled?
   end
 
+  def forecast? = value_settings["forecast"].is_a?(Hash)
+
+  # Seconds until the pushed values reach the forecast's level (ADR 0023), or
+  # nil if they aren't heading there. A number given is counted as pushed now.
+  def forecast_time_left(number = nil)
+    now = Time.current
+    points = checks.where(checked_at: (now - Uptime::Forecast::WINDOWS.max)..).where.not(value: nil).order(:checked_at).pluck(:checked_at, :value)
+    points << [ now, number ] if number
+    Uptime::Forecast.new(points, reaches: value_settings["forecast"]["reaches"], now: now).time_left
+  end
+
+  def forecast_in_words
+    reaches = format_value(value_settings["forecast"]["reaches"].to_f)
+    time_left = forecast_time_left
+    time_left ? "Reaches #{reaches} in about #{roughly(time_left)}" : "Not heading for #{reaches}"
+  end
+
   def format_value(number)
     return if number.nil?
     shown = number % 1 == 0 ? number.to_i : number
@@ -73,11 +92,27 @@ module Uptime::Monitor::Push
       return [ "up", nil ] if number.nil?
 
       limits = value_settings
+      forecast = limits["forecast"]
+      time_left = forecast_time_left(number) if forecast
       { "down" => %w[ down_above down_below ], "warn" => %w[ warn_above warn_below ] }.each do |status, (above, below)|
         return [ status, limit_message(number, "over", limits[above]) ] if limits[above] && number > limits[above]
         return [ status, limit_message(number, "under", limits[below]) ] if limits[below] && number < limits[below]
+
+        within = forecast && forecast["#{status}_within"]
+        return [ status, forecast_message(number, time_left) ] if time_left && within && time_left <= within
       end
       [ "up", nil ]
+    end
+
+    def forecast_message(number, time_left)
+      "#{value_settings["label"].presence || "Value"} #{format_value(number)}, reaches #{format_value(value_settings["forecast"]["reaches"].to_f)} in about #{roughly(time_left)}"
+    end
+
+    # Days once it's a day or more, then hours, then minutes.
+    def roughly(seconds)
+      name, size = { "day" => 1.day, "hour" => 1.hour, "minute" => 1.minute }.find { |_, size| seconds >= size } || [ "minute", 1.minute ]
+      count = [ (seconds / size.to_f).round, 1 ].max
+      "#{count} #{name.pluralize(count)}"
     end
 
     def limit_message(number, direction, limit)

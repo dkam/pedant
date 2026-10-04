@@ -135,3 +135,8 @@ without Gitea access. The issue remains the place for discussion.
 - [`decisions/0022-http-body-checks.md`](decisions/0022-http-body-checks.md)
   adds `expect_body` (text to find) and `expect_json` (dotted paths and their
   values) to `http` monitors, for Kuma's keyword and json-query monitors.
+- [`decisions/0023-value-forecasts-and-host-reporter.md`](decisions/0023-value-forecasts-and-host-reporter.md)
+  gives pushed values a forecast (when free space reaches 0, from hourly
+  medians over a day and a week, restarted after a cleanup). Disk space and
+  inodes are pushed from a host-reporter stack on each host, separate from
+  doco-cd's own.

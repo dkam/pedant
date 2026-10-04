@@ -76,6 +76,53 @@ class PushValuesAndRunsTest < ActionDispatch::IntegrationTest
     assert_equal [ "up", 1_200_000.0 ], monitor.reload.values_at(:state, :last_value)
   end
 
+  test "free space heading for zero within down_within is down, saying when" do
+    monitor = free_space_monitor
+    history monitor, hours: 24 do |hours_ago| 40 + hours_ago end # 1 GB an hour
+
+    get push_url_for(value: "40")
+
+    monitor.reload
+    assert_equal "down", monitor.state
+    assert_equal "Free on / 40 GB, reaches 0 GB in about 2 days", monitor.last_message
+  end
+
+  test "heading for zero within warn_within is warn" do
+    monitor = free_space_monitor
+    history monitor, hours: 24 do |hours_ago| 200 + hours_ago end
+
+    get push_url_for(value: "200")
+
+    monitor.reload
+    assert_equal "warn", monitor.state
+    assert_equal "Free on / 200 GB, reaches 0 GB in about 8 days", monitor.last_message
+  end
+
+  test "a down limit wins over a forecast's warn, and a forecast's down over a warn limit" do
+    monitor = sync("push" => @digest, "interval" => 300, "value" => { "label" => "Free on /", "unit" => "GB",
+      "down_below" => 5, "warn_below" => 100, "forecast" => { "reaches" => 0, "down_within" => "3d", "warn_within" => "14d" } })
+    history monitor, hours: 24 do |hours_ago| 4 + hours_ago * 0.01 end
+
+    get push_url_for(value: "4")
+    assert_equal "Free on / 4 GB (under 5 GB)", monitor.reload.last_message
+
+    monitor.checks.delete_all
+    history monitor, hours: 24 do |hours_ago| 50 + hours_ago end
+    get push_url_for(value: "50")
+    assert_equal [ "down", "Free on / 50 GB, reaches 0 GB in about 2 days" ], monitor.reload.values_at(:state, :last_message)
+  end
+
+  test "steady free space is up, and a new monitor has no forecast yet" do
+    monitor = free_space_monitor
+
+    get push_url_for(value: "40")
+    assert_equal "up", monitor.reload.state
+
+    history monitor, hours: 24 do 40 end
+    get push_url_for(value: "40")
+    assert_equal "up", monitor.reload.state
+  end
+
   test "ping still means milliseconds, for scripts moved from Kuma" do
     monitor = sync("push" => @digest, "interval" => 3600)
 
@@ -140,6 +187,20 @@ class PushValuesAndRunsTest < ActionDispatch::IntegrationTest
   private
     def disk_monitor
       sync("push" => @digest, "interval" => 3600, "value" => { "label" => "Disk used", "unit" => "%", "warn_above" => 80, "down_above" => 90 })
+    end
+
+    def free_space_monitor
+      sync("push" => @digest, "interval" => 300, "value" => { "label" => "Free on /", "unit" => "GB",
+        "forecast" => { "reaches" => 0, "down_within" => "3d", "warn_within" => "14d" } })
+    end
+
+    # Pushed values every 5 minutes, up to 5 minutes ago. The block gets whole
+    # hours ago.
+    def history(monitor, hours:)
+      now = Time.current
+      (hours * 12).downto(1).each do |step|
+        monitor.checks.create!(status: "up", value: yield((step * 5) / 60), checked_at: now - (step * 5).minutes)
+      end
     end
 
     def sync(entry)

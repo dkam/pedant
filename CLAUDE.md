@@ -52,7 +52,9 @@ Kuma does two things, and Pedant replaces both. Seed both from Kuma's export
   holds the token's SHA-256 digest, never the token; `bin/rails
   pedant:push_token` makes a pair. The token never reaches a log. Pushes can
   carry a value (limits and unit in monitors.yml), mark a run's start, and
-  follow a cron schedule (ADRs 0018, 0019; `Uptime::Monitor::Push`).
+  follow a cron schedule (ADRs 0018, 0019; `Uptime::Monitor::Push`). A value
+  can have a forecast, such as free space reaching 0 within 3 days (ADR 0023,
+  `Uptime::Forecast`); disk and inodes are pushed from a host-reporter stack.
 - **Splat's check-ins:** splat keeps the Rails apps' own job check-ins. Pedant
   only shows their state.
 - **Pedant's own outages:**

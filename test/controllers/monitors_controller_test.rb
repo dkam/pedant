@@ -102,4 +102,24 @@ class MonitorsControllerTest < ActionDispatch::IntegrationTest
     assert_select "[data-chart=latency]", /Latency \(ms\)/
     assert_select "[data-chart=value]", 0
   end
+
+  test "a value with a forecast shows when it reaches its level, or that it isn't heading there" do
+    _token, digest = push_token
+    disk = monitor_source({ "monitors.yml" => {
+      "disk" => { "push" => digest, "interval" => 300, "value" => { "label" => "Free on /", "unit" => "GB", "forecast" => { "reaches" => 0, "warn_within" => "14d" } } }
+    } }, "other").tap(&:sync!).monitors.sole
+    disk.record_push(Uptime::Result.new(status: "up", value: 40))
+    sign_in_with_password
+
+    get monitor_url(disk)
+    assert_select "[data-forecast]", /Not heading for 0 GB/
+
+    now = Time.current
+    (24 * 12).downto(1) { |step| disk.checks.create!(status: "up", value: 40 + step * 5 / 60, checked_at: now - (step * 5).minutes) }
+    get monitor_url(disk)
+    assert_select "[data-forecast]", /Reaches 0 GB in about 2 days/
+
+    get monitor_url(@splat)
+    assert_select "[data-forecast]", 0
+  end
 end

@@ -19,6 +19,9 @@
   <% else %>
     <div><dt class="text-stone-500">Every</dt><dd><%= @monitor.interval %>s, <%= @monitor.timeout %>s timeout, <%= pluralize(@monitor.retries, "retry") %></dd></div>
   <% end %>
+  <% if @monitor.push? && @monitor.forecast? %>
+    <div data-forecast><dt class="text-stone-500">Forecast</dt><dd><%= @monitor.forecast_in_words %></dd></div>
+  <% end %>
   <div><dt class="text-stone-500">Defined in</dt><dd class="font-mono"><%= @monitor.source.name %>: <%= @monitor.defined_in %></dd></div>
 </dl>
 
