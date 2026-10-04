@@ -131,8 +131,10 @@ Not Postgres, not Redis, not Sidekiq.
 
 ## Where it runs and who can log in
 
-- **Host:** off the fleet (not hetz01 or misc01), on the tailnet only. Which
-  machine doesn't matter to the code (ADR 0008).
+- **Host:** grab01, off the fleet it watches (ADR 0008), from
+  booko-services' `grab01/pedant/` stack. The website is public at
+  `pedant.booko.info`, and pushes are taken only over the tailnet, at
+  `http://grab01` (ADR 0024). Which machine doesn't matter to the code.
 - **Login:** a password for one owner, or OIDC, chosen at setup. Only the
   chosen one works (ADRs 0015, 0017). The password owner signs in with an
   email. No sign-up, no reset by email.

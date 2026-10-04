@@ -140,3 +140,7 @@ without Gitea access. The issue remains the place for discussion.
   medians over a day and a week, restarted after a cleanup). Disk space and
   inodes are pushed from a host-reporter stack on each host, separate from
   doco-cd's own.
+- [`decisions/0024-grab01-public-website-tailnet-pushes.md`](decisions/0024-grab01-public-website-tailnet-pushes.md)
+  runs Pedant on grab01. The website is public at `pedant.booko.info`, and
+  servers push over the tailnet to `http://grab01`, which is the only place
+  that takes pushes.
