@@ -1,7 +1,8 @@
 # Receives push monitors' reports, on Kuma's URL shape (ADR 0012):
 # /api/push/<token>?status=up|down&msg=…&ping=…, plus Pedant's own
 # value=… (judged against the limits in monitors.yml) and status=start (the
-# start of a run). See Uptime::Monitor::Push.
+# start of a run). See Uptime::Monitor::Push. The dashboards refresh on the
+# scheduler's next tick (Uptime::ScheduleChecksJob).
 #
 # The token is the credential. It arrives through PushTokenFilter, so it's
 # never in the logged path; the monitor is found by the token's SHA-256
@@ -25,7 +26,6 @@ class PushesController < ActionController::API
       status = params.fetch(:status, "up") == "up" ? "up" : "down"
       monitor.record_push monitor.push_result(status: status, value: params[:value], message: params[:msg].presence&.truncate(255), latency_ms: ping)
     end
-    Turbo::StreamsChannel.broadcast_refresh_to(:monitors)
 
     render json: { ok: true }
   end

@@ -37,4 +37,45 @@ class Uptime::ScheduleChecksJobTest < ActiveJob::TestCase
 
     assert_enqueued_jobs 3, only: Uptime::CheckJob # due twice, and later once
   end
+
+  # One refresh per tick rather than one per check: checks finishing seconds
+  # apart on different workers morphed the dashboard every few seconds (#10).
+  test "a tick refreshes the dashboards once if anything was recorded since the last tick" do
+    push_source = monitor_source({ "monitors.yml" => { "backup" => { "push" => push_token.last, "interval" => 3600 } } }, "nas")
+    push_source.sync!
+    due, later, backup = @source.monitors.find_by!(key: "due"), @source.monitors.find_by!(key: "later"), push_source.monitors.sole
+    Uptime::ScheduleChecksJob.perform_now
+
+    travel 5.seconds do
+      due.record Uptime::Result.new(status: "up")
+      later.record Uptime::Result.new(status: "up")
+    end
+    travel 15.seconds do
+      assert_turbo_stream_broadcasts(:monitors, count: 1) { Uptime::ScheduleChecksJob.perform_now }
+    end
+
+    # An unchanged result still refreshes: the "ago" times and recent checks move on.
+    travel 20.seconds do
+      due.record Uptime::Result.new(status: "up")
+    end
+    travel 30.seconds do
+      assert_turbo_stream_broadcasts(:monitors, count: 1) { Uptime::ScheduleChecksJob.perform_now }
+    end
+
+    # So does a run's start, which records no check.
+    travel 35.seconds do
+      backup.start_run!
+    end
+    travel 45.seconds do
+      assert_turbo_stream_broadcasts(:monitors, count: 1) { Uptime::ScheduleChecksJob.perform_now }
+    end
+  end
+
+  test "a tick with nothing recorded since the last one doesn't refresh" do
+    Uptime::ScheduleChecksJob.perform_now
+
+    travel 15.seconds do
+      assert_turbo_stream_broadcasts(:monitors, count: 0) { Uptime::ScheduleChecksJob.perform_now }
+    end
+  end
 end

@@ -2,6 +2,7 @@ ENV["RAILS_ENV"] ||= "test"
 require_relative "../config/environment"
 require "rails/test_help"
 require "webmock/minitest"
+require "turbo/broadcastable/test_helper"
 
 Dir[File.expand_path("support/**/*.rb", __dir__)].each { |file| require file }
 
@@ -15,6 +16,10 @@ module ActiveSupport
 
     # Setup all fixtures in test/fixtures/*.yml for all tests in alphabetical order.
     fixtures :all
+
+    # turbo-rails adds these only once Action Cable has loaded, which is after
+    # the first broadcast, so a test asserting on one could run without them.
+    include Turbo::Broadcastable::TestHelper
 
     # Add more helper methods to be used by all tests here...
   end

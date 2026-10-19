@@ -43,6 +43,12 @@ class Uptime::CheckJobTest < ActiveJob::TestCase
     assert_empty @monitor.checks
   end
 
+  test "a check doesn't refresh the dashboards; the scheduler's next tick does (#10)" do
+    stub_request(:get, @monitor.target).to_return(status: 200)
+
+    assert_turbo_stream_broadcasts(:monitors, count: 0) { Uptime::CheckJob.perform_now(@monitor) }
+  end
+
   test "checks run on their own queue" do
     assert_equal "checks", Uptime::CheckJob.new.queue_name
   end

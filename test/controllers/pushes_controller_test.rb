@@ -47,6 +47,13 @@ class PushesControllerTest < ActionDispatch::IntegrationTest
     assert_equal "down", @monitor.reload.state
   end
 
+  test "a push or a run's start doesn't refresh the dashboards; the scheduler's next tick does (#10)" do
+    assert_turbo_stream_broadcasts(:monitors, count: 0) do
+      get "/api/push/#{@token}", params: { status: "start" }
+      get "/api/push/#{@token}"
+    end
+  end
+
   test "POST works as well as GET" do
     post "/api/push/#{@token}", params: { status: "up" }
 
