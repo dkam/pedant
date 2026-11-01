@@ -151,6 +151,35 @@ class OidcAuthControllerTest < ActionDispatch::IntegrationTest
     assert_redirected_to login_url
   end
 
+  # Clinch keeps one sid for as long as you're signed in there, so the next
+  # login brings back the sid whose mapping expired (24 hours) or was ended by
+  # a backchannel logout. That row stays until cleanup_expired, and a second
+  # one beside it failed uniqueness: the login went through untracked, and the
+  # next page found no live mapping and logged you out again, round and round
+  # (splat, 2026-11-01).
+  test "logging in again after the sid's mapping expired keeps you logged in" do
+    log_in(sub: "owner-sub", sid: "provider-session")
+
+    travel 25.hours do
+      log_in(sub: "owner-sub", sid: "provider-session")
+
+      get root_url
+      assert_response :success
+      assert_equal 1, OidcSession.where(oidc_sid: "provider-session").count
+      assert OidcSession.find_live("provider-session")
+    end
+  end
+
+  test "logging in again after a backchannel logout keeps you logged in" do
+    log_in(sub: "owner-sub", sid: "provider-session")
+    post oidc_logout_url, params: { logout_token: @provider.logout_token(sid: "provider-session") }
+
+    log_in(sub: "owner-sub", sid: "provider-session")
+
+    get root_url
+    assert_response :success
+  end
+
   test "a replayed logout token is refused" do
     token = @provider.logout_token(sid: "provider-session", jti: "once")
 

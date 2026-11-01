@@ -54,7 +54,7 @@ module Authentication
       @current_user = user
 
       if sid.present?
-        OidcSession.create!(user: user, oidc_sid: sid, session_id: session.id&.to_s.presence || SecureRandom.hex(16), expires_at: 24.hours.from_now)
+        OidcSession.track_login(user: user, sid: sid, session_id: session.id&.to_s.presence || SecureRandom.hex(16))
       end
     rescue ActiveRecord::RecordNotUnique, ActiveRecord::RecordInvalid => e
       # Losing the mapping degrades backchannel logout; it mustn't cost the
