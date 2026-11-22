@@ -1,7 +1,7 @@
 require "test_helper"
 
 class Readout::PushTest < ActiveSupport::TestCase
-  FIELDS = %i[ expected grace_seconds max_runtime_seconds last_pushed_at silent_for_seconds missed_after running_since value ].freeze
+  FIELDS = %i[ expected grace_seconds max_runtime_seconds pushes_from last_pushed_at silent_for_seconds missed_after running_since value ].freeze
 
   setup do
     _token, @digest = push_token
@@ -20,6 +20,13 @@ class Readout::PushTest < ActiveSupport::TestCase
     assert_nil readout[:silent_for_seconds]
     assert_nil readout[:value]
     assert_equal monitor.next_check_at.utc.iso8601, readout[:missed_after]
+    assert_equal [ "tailnet" ], readout[:pushes_from]
+  end
+
+  test "where pushes are taken from, when monitors.yml says (ADR 0027)" do
+    monitor = sync_one("backups" => { "push" => @digest, "interval" => "8d", "from" => "203.0.113.5" })
+
+    assert_equal [ "203.0.113.5" ], Readout::Push.new(monitor).to_h[:pushes_from]
   end
 
   test "a scheduled monitor, pushed to, with a run in progress" do

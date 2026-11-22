@@ -3,7 +3,8 @@ module PedantMcp
     tool_name "push_monitors"
     description "Push monitors: when each last checked in and how long it's been silent, what it expects " \
       "(an interval or a cron schedule, plus grace), when silence will count as missed (missed_after), " \
-      "a run in progress, and its pushed value with limits and forecast. Down first. " \
+      "a run in progress, its pushed value with limits and forecast, and which addresses it takes pushes from " \
+      "(pushes_from: tailnet unless monitors.yml says; a push from elsewhere is a 404). Down first. " \
       "Use it to watch a job's first check-ins after moving it to Pedant."
     annotations(read_only_hint: true, destructive_hint: false, idempotent_hint: true, open_world_hint: false)
     input_schema(

@@ -36,6 +36,7 @@
     <p class="mt-2 text-stone-600"><code class="font-mono">status=down</code> marks it down straight away; <code class="font-mono">msg</code> and <code class="font-mono">ping</code> are kept with the check.
       <% if @monitor.value_settings.any? %><code class="font-mono">value=</code> is judged against the limits in monitors.yml.<% end %>
       <code class="font-mono">status=start</code> at the start of a run records how long it takes<%= @monitor.max_runtime ? ", and marks it down if it runs past #{seconds_in_words(@monitor.max_runtime)}" : "" %>.</p>
+    <p class="mt-2 text-stone-600" data-push-sources>Pushes are taken only from <%= push_sources_in_words(@monitor) %>; from anywhere else, the token is refused as unknown (<code class="font-mono">from:</code> in monitors.yml).</p>
     <% if @monitor.started_at %><p class="mt-2 text-amber-700">Running since <%= time_ago_in_words(@monitor.started_at) %> ago.</p><% end %>
   </section>
 <% end %>

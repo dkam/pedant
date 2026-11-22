@@ -81,6 +81,17 @@ class MonitorsControllerTest < ActionDispatch::IntegrationTest
     get monitor_url(monitor)
     assert_includes response.body, "/api/push/&lt;token&gt;"
     assert_not_includes response.body, token
+    assert_select "[data-push-sources]", /only from the tailnet/
+  end
+
+  test "a push monitor's page says which addresses it takes pushes from (ADR 0027)" do
+    _token, digest = push_token
+    monitor = monitor_source({ "monitors.yml" => { "backups" => { "push" => digest, "interval" => "8d", "from" => [ "tailnet", "203.0.113.5" ] } } }, "other").tap(&:sync!).monitors.sole
+    sign_in_with_password
+
+    get monitor_url(monitor)
+
+    assert_select "[data-push-sources]", /only from the tailnet or 203\.0\.113\.5/
   end
 
   test "a monitor's page graphs its values in their own unit, its run times, or its latency" do

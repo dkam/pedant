@@ -7,6 +7,7 @@ class PushValuesAndRunsTest < ActionDispatch::IntegrationTest
   setup do
     PushesController::RATE_LIMITS.clear
     @token, @digest = push_token
+    integration_session.remote_addr = TAILNET_ADDRESS
   end
 
   test "a value within its limits is up, and kept with the check" do

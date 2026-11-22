@@ -10,6 +10,8 @@ class PushesControllerTest < ActionDispatch::IntegrationTest
     @source = monitor_source("monitors.yml" => { "nas-backup" => { "push" => digest, "interval" => 3600 } })
     @source.sync!
     @monitor = @source.monitors.sole
+    # Pushes come over the tailnet unless a test says otherwise (ADR 0027).
+    integration_session.remote_addr = TAILNET_ADDRESS
   end
 
   test "a push with no status is up, as in Kuma, and needs no login" do
@@ -98,6 +100,94 @@ class PushesControllerTest < ActionDispatch::IntegrationTest
     assert_equal 30, @monitor.checks.count
   end
 
+  # Which addresses may push (ADR 0027). In production every push comes
+  # through Caddy and then Thruster (see push_through_proxies).
+  test "without from:, a push is taken from the tailnet, over IPv4 or IPv6" do
+    push_through_proxies from: "100.101.102.103"
+    assert_response :success
+
+    push_through_proxies from: "fd7a:115c:a1e0::1"
+    assert_response :success
+    assert_equal 2, @monitor.checks.count
+  end
+
+  test "without from:, a push from outside the tailnet is a 404, the same as an unknown token" do
+    push_through_proxies from: "203.0.113.5"
+
+    assert_response :not_found
+    assert_equal({ "ok" => false, "msg" => "Monitor not found or not active." }, response.parsed_body)
+    assert_empty @monitor.checks
+  end
+
+  test "from: takes pushes from its addresses only, and not from the tailnet" do
+    resync("from" => "203.0.113.5")
+
+    push_through_proxies from: "203.0.113.5"
+    assert_response :success
+
+    push_through_proxies from: "203.0.113.6"
+    assert_response :not_found
+
+    push_through_proxies from: "100.101.102.103"
+    assert_response :not_found
+    assert_equal 1, @monitor.checks.count
+  end
+
+  test "from: can name ranges, and tailnet alongside other addresses" do
+    resync("from" => [ "tailnet", "198.51.100.0/24", "2001:db8::/32" ])
+
+    [ "100.101.102.103", "198.51.100.77", "2001:db8::5" ].each do |address|
+      push_through_proxies from: address
+      assert_response :success, "expected a push from #{address} to be taken"
+    end
+
+    push_through_proxies from: "198.51.101.1"
+    assert_response :not_found
+  end
+
+  test "an IPv4 address written as IPv6 is the same address" do
+    resync("from" => "203.0.113.5")
+
+    push_through_proxies from: "::ffff:203.0.113.5"
+
+    assert_response :success
+  end
+
+  test "a forged Client-IP header doesn't get a push in" do
+    push_through_proxies from: "203.0.113.5", headers: { "Client-Ip" => "100.101.102.103" }
+
+    assert_response :not_found
+    assert_empty @monitor.checks
+  end
+
+  # If a proxy appends to the client's own X-Forwarded-For, the last address
+  # is the one the proxy saw.
+  test "a forged address ahead of the proxy's in X-Forwarded-For doesn't get a push in" do
+    push_through_proxies from: "100.101.102.103, 203.0.113.5"
+
+    assert_response :not_found
+    assert_empty @monitor.checks
+  end
+
+  # Tailscale's IPv6 addresses are in fc00::/7, which Rails trusts as proxies
+  # by default, so a forged Client-IP behind one would have been believed.
+  test "a tailnet address over IPv6 can't claim another address with Client-IP" do
+    resync("from" => "203.0.113.5")
+
+    push_through_proxies from: "fd7a:115c:a1e0::1", headers: { "Client-Ip" => "203.0.113.5" }
+
+    assert_response :not_found
+    assert_empty @monitor.checks
+  end
+
+  test "pushes refused from elsewhere don't use up the token's rate limit" do
+    31.times { push_through_proxies from: "203.0.113.5" }
+
+    push_through_proxies from: "100.101.102.103"
+
+    assert_response :success
+  end
+
   test "the token never reaches the log" do
     log = StringIO.new
     with_logger(ActiveSupport::Logger.new(log)) do
@@ -112,6 +202,18 @@ class PushesControllerTest < ActionDispatch::IntegrationTest
   end
 
   private
+    # As on grab01: Caddy sets X-Forwarded-For to the client, Thruster in the
+    # container appends Docker's gateway, and Puma sees Thruster on 127.0.0.1.
+    def push_through_proxies(from:, headers: {})
+      get "/api/push/#{@token}", headers: { "X-Forwarded-For" => "#{from}, 172.18.0.1" }.merge(headers), env: { "REMOTE_ADDR" => "127.0.0.1" }
+    end
+
+    def resync(settings)
+      write_monitor_files(@source.path, "monitors.yml" => { "nas-backup" => { "push" => push_token.last, "interval" => 3600 }.merge(settings) })
+      @source.sync!
+      assert_empty @source.sync_error_list
+    end
+
     def with_logger(logger)
       previous = [ Rails.logger, ActionController::Base.logger ]
       Rails.logger = ActionController::Base.logger = logger

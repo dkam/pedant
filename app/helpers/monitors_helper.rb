@@ -10,6 +10,12 @@ module MonitorsHelper
     end
   end
 
+  # "the tailnet or 192.0.2.7": where a push monitor takes pushes from (ADR 0027).
+  def push_sources_in_words(monitor)
+    monitor.push_sources.map { |source| source == "tailnet" ? "the tailnet" : source }
+      .to_sentence(two_words_connector: " or ", last_word_connector: ", or ")
+  end
+
   def seconds_in_words(seconds)
     ActiveSupport::Duration.build(seconds).inspect
   end

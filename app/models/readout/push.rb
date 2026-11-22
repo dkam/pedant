@@ -13,6 +13,8 @@ class Readout::Push
       expected: expected,
       grace_seconds: @monitor.grace,
       max_runtime_seconds: @monitor.max_runtime,
+      # Addresses, ranges, or "tailnet" (ADR 0027).
+      pushes_from: @monitor.push_sources,
       last_pushed_at: Readout.iso(@monitor.last_pushed_at),
       silent_for_seconds: ((@now - @monitor.last_pushed_at).round if @monitor.last_pushed_at),
       # The scheduler looks again then: if no push has come by that time, it's

@@ -149,3 +149,8 @@ without Gitea access. The issue remains the place for discussion.
   `pedant.booko.info/mcp` and protected by a token. Its tools read through
   `Readout`, which the HTML views share. Its named bearer tokens are shown
   once, stored as digests, and never expire.
+- [`decisions/0027-push-sources-in-monitors-yml.md`](decisions/0027-push-sources-in-monitors-yml.md)
+  moves "pushes only from the tailnet" from Caddy into Pedant, per monitor: a
+  push monitor's `from:` lists the addresses or ranges that may push to it,
+  and without it only the tailnet may. Pedant must see the real client
+  address, so a forged `Client-IP` is ignored.

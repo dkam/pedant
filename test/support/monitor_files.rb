@@ -2,6 +2,10 @@ require "tmpdir"
 
 # Builds a throwaway stacks checkout with monitors.yml files in it (ADR 0016).
 module MonitorFiles
+  # Where a push comes from unless a test says otherwise: without from:, a
+  # push monitor takes pushes only from the tailnet (ADR 0027).
+  TAILNET_ADDRESS = "100.101.102.103"
+
   # files: { "monitors.yml" => { "splat" => { "http" => "..." } } }, or a raw
   # string for a file that shouldn't parse.
   def monitor_source(files = {}, name = "koti")

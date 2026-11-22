@@ -75,7 +75,36 @@ class Uptime::PushDefinitionTest < ActiveSupport::TestCase
     end
   end
 
-  test "values, runs and schedules are push settings, not http ones" do
+  test "from: is an address, a range or tailnet, alone or in a list (ADR 0027)" do
+    assert_equal [ "203.0.113.5" ], sync("push" => @digest, "interval" => 3600, "from" => "203.0.113.5").options["from"]
+    _token, other_digest = push_token("another-push-token")
+    assert_equal [ "tailnet", "198.51.100.0/24", "2001:db8::/32" ],
+      sync("push" => other_digest, "interval" => 3600, "from" => [ "tailnet", "198.51.100.0/24", "2001:db8::/32" ]).options["from"]
+  end
+
+  test "without from:, a push monitor takes pushes from the tailnet" do
+    monitor = sync("push" => @digest, "interval" => 3600)
+
+    assert_nil monitor.options["from"]
+    assert_equal [ "tailnet" ], monitor.push_sources
+    assert monitor.accepts_push_from?("100.64.0.1")
+    assert monitor.accepts_push_from?("100.127.255.254")
+    assert_not monitor.accepts_push_from?("100.128.0.1")
+    assert_not monitor.accepts_push_from?("127.0.0.1")
+    assert_not monitor.accepts_push_from?("not an address")
+    assert_not monitor.accepts_push_from?(nil)
+  end
+
+  test "from: entries are checked" do
+    assert_error(/from "the office" isn't an address/, "push" => @digest, "interval" => 3600, "from" => "the office")
+    assert_error(/from "10.0.0.300" isn't an address/, "push" => @digest, "interval" => 3600, "from" => [ "tailnet", "10.0.0.300" ])
+    assert_error(/from needs at least one address/, "push" => @digest, "interval" => 3600, "from" => [])
+    assert_error(/from needs at least one address/, "push" => @digest, "interval" => 3600, "from" => nil)
+    assert_error(/from/, "push" => @digest, "interval" => 3600, "from" => { "home" => "203.0.113.5" })
+  end
+
+  test "values, runs, schedules and from: are push settings, not http ones" do
+    assert_error(/from/, "http" => "http://splat.local/", "from" => "203.0.113.5")
     assert_error(/value/, "http" => "http://splat.local/", "value" => { "unit" => "%" })
     assert_error(/max_runtime/, "http" => "http://splat.local/", "max_runtime" => "1h")
     assert_error(/schedule/, "http" => "http://splat.local/", "schedule" => "0 2 * * *", "timezone" => "UTC")

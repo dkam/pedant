@@ -55,6 +55,8 @@ Kuma does two things, and Pedant replaces both. Seed both from Kuma's export
   follow a cron schedule (ADRs 0018, 0019; `Uptime::Monitor::Push`). A value
   can have a forecast, such as free space reaching 0 within 3 days (ADR 0023,
   `Uptime::Forecast`); disk and inodes are pushed from a host-reporter stack.
+  Pushes are taken only from the tailnet, or from the addresses in the
+  monitor's `from:` (ADR 0027).
 - **Splat's check-ins:** splat keeps the Rails apps' own job check-ins. Pedant
   only shows their state.
 - **Pedant's own outages:**
@@ -138,8 +140,10 @@ Not Postgres, not Redis, not Sidekiq.
 
 - **Host:** grab01, off the fleet it watches (ADR 0008), from
   booko-services' `grab01/pedant/` stack. The website is public at
-  `pedant.booko.info`, and pushes are taken only over the tailnet, at
-  `http://grab01` (ADR 0024). Which machine doesn't matter to the code.
+  `pedant.booko.info`, and servers push over the tailnet, to `http://grab01`
+  (ADR 0024). A push monitor takes pushes only from the tailnet unless its
+  `from:` in monitors.yml names other addresses, which push to the public
+  name (ADR 0027). Which machine doesn't matter to the code.
 - **Login:** a password for one owner, or OIDC, chosen at setup. Only the
   chosen one works (ADRs 0015, 0017). The password owner signs in with an
   email. No sign-up, no reset by email.

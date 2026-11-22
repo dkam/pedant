@@ -9,6 +9,24 @@
 module Uptime::Monitor::Push
   extend ActiveSupport::Concern
 
+  # Tailscale's addresses. A push monitor without from: takes pushes only
+  # from these (ADRs 0024, 0027).
+  TAILNET = %w[ 100.64.0.0/10 fd7a:115c:a1e0::/48 ].map { |range| IPAddr.new(range) }.freeze
+
+  # Where this monitor takes pushes from: monitors.yml's from:, or the tailnet.
+  def push_sources = options["from"] || [ "tailnet" ]
+
+  # A push from anywhere else is refused as if its token were unknown. An
+  # IPv4 address written as IPv6 (::ffff:192.0.2.1) is the IPv4 address.
+  def accepts_push_from?(address)
+    client = IPAddr.new(address.to_s).native
+    push_sources.any? do |source|
+      source == "tailnet" ? TAILNET.any? { |range| range.include?(client) } : IPAddr.new(source).include?(client)
+    end
+  rescue IPAddr::Error
+    false
+  end
+
   # Turns a push's parameters into a result. The job's own down wins; then
   # the down limits, the forecast's down_within, the warn limits, and the
   # forecast's warn_within.

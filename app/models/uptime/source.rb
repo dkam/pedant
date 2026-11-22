@@ -12,7 +12,7 @@ class Uptime::Source < ApplicationRecord
   FIELDS = {
     "http" => %w[ name interval timeout retries expect_status expect_body expect_json tls_verify remind_every ],
     "tcp" => %w[ name interval timeout retries remind_every ],
-    "push" => %w[ name interval schedule timezone grace max_runtime value remind_every ]
+    "push" => %w[ name interval schedule timezone grace max_runtime value from remind_every ]
   }.freeze
   DEFAULTS = {
     "http" => { "interval" => 60, "timeout" => 10, "retries" => 1, "expect_status" => "200-299", "tls_verify" => true, "remind_every" => 86_400 },
@@ -132,6 +132,7 @@ class Uptime::Source < ApplicationRecord
       %w[ interval timeout grace max_runtime remind_every ].each { |field| settings[field] = seconds(settings[field]) if settings.key?(field) }
       settings["remind_every"] = nil if entry["remind_every"] == "never"
       settings["value"] = with_forecast_in_seconds(settings["value"]) if settings.key?("value")
+      settings["from"] = Array.wrap(settings["from"]).map { |source| source.to_s.strip } if settings["from"].is_a?(String) || settings["from"].is_a?(Array)
       target = entry[kind].to_s
       problems.concat case kind
       when "http" then http_problems(target, settings)
@@ -145,7 +146,7 @@ class Uptime::Source < ApplicationRecord
         kind: kind, target: target,
         interval: settings["interval"],
         timeout: settings.fetch("timeout", 0), retries: settings.fetch("retries", 0), grace: settings.fetch("grace", 0),
-        options: settings.slice("expect_status", "expect_body", "expect_json", "tls_verify", "schedule", "timezone", "max_runtime", "value", "remind_every")
+        options: settings.slice("expect_status", "expect_body", "expect_json", "tls_verify", "schedule", "timezone", "max_runtime", "value", "from", "remind_every")
       }
       [ definition, problems ]
     end
@@ -211,7 +212,21 @@ class Uptime::Source < ApplicationRecord
       problems.concat whole_numbers(settings, %w[ grace ])
       problems.concat whole_numbers(settings, %w[ max_runtime ]) if settings.key?("max_runtime")
       problems.concat value_problems(settings["value"]) if settings.key?("value")
+      problems.concat from_problems(settings["from"]) if settings.key?("from")
       problems
+    end
+
+    # Where pushes may come from (ADR 0027): addresses, ranges, or tailnet.
+    def from_problems(sources)
+      return [ "from needs at least one address, range (such as 192.0.2.0/24) or tailnet" ] unless sources.is_a?(Array) && sources.any?
+
+      sources.filter_map do |source|
+        next if source == "tailnet"
+        IPAddr.new(source)
+        nil
+      rescue IPAddr::Error
+        "from #{source.inspect} isn't an address, a range (such as 192.0.2.0/24) or tailnet"
+      end
     end
 
     def schedule_problems(schedule, timezone)
