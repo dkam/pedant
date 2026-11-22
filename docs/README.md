@@ -158,3 +158,7 @@ without Gitea access. The issue remains the place for discussion.
   offers System, Light and Dark, kept per browser in localStorage. Views use
   colour roles (`text-ink`, `bg-surface`, `text-bad`), each a `light-dark()`
   pair in the stylesheet, never palette colours; a test enforces it.
+- [`decisions/0029-about-tool-over-mcp-only.md`](decisions/0029-about-tool-over-mcp-only.md)
+  adds an `about` MCP tool: Pedant's version and revision, Ruby, Rails, OS,
+  host kernel, C libraries and every gem, default gems included, for checking
+  an advisory. Over MCP only, never on the public website.

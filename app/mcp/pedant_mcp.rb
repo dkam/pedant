@@ -16,7 +16,7 @@ module PedantMcp
       name: "pedant",
       title: "Pedant",
       version: Pedant::VERSION,
-      tools: [ ListMonitors, MonitorHistory, PushMonitors, RecentAlerts ],
+      tools: [ ListMonitors, MonitorHistory, PushMonitors, RecentAlerts, About ],
       configuration: MCP::Configuration.new(exception_reporter: method(:report_exception)),
       instructions: <<~TEXT
         Pedant watches Booko's services: HTTP and TCP checks on a schedule, and
@@ -35,6 +35,8 @@ module PedantMcp
         changes and checks. push_monitors shows when each push monitor last
         checked in and when it will count as missed. recent_alerts shows what
         was sent, and whether each channel delivered it.
+        about says which Pedant this is and what it runs on, down to each gem's
+        version, for checking an advisory against it.
 
         Times are UTC, in ISO 8601.
       TEXT

@@ -124,11 +124,20 @@ class McpEndpointTest < ActionDispatch::IntegrationTest
     assert_match "only reads", result["instructions"]
   end
 
-  test "tools/list offers the four tools, each marked read-only" do
+  # The only tool without arguments, so the one a transport could trip over.
+  test "about answers over the endpoint" do
+    call_tool "about"
+
+    assert_response :success
+    assert_not result["isError"], tool_text
+    assert_equal Pedant::VERSION, tool_json.dig("pedant", "version")
+  end
+
+  test "tools/list offers the five tools, each marked read-only" do
     rpc "tools/list"
 
     tools = result.fetch("tools")
-    assert_equal %w[ list_monitors monitor_history push_monitors recent_alerts ], tools.map { |tool| tool["name"] }.sort
+    assert_equal %w[ about list_monitors monitor_history push_monitors recent_alerts ], tools.map { |tool| tool["name"] }.sort
     tools.each do |tool|
       assert_equal true, tool.dig("annotations", "readOnlyHint"), tool["name"]
       assert_equal false, tool.dig("annotations", "destructiveHint"), tool["name"]

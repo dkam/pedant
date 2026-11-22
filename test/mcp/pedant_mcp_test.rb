@@ -32,6 +32,13 @@ class PedantMcpTest < ActiveSupport::TestCase
     assert_equal JSON.parse(Readout::Monitors.new(state: "down").to_h.to_json), json
   end
 
+  test "about is the about readout" do
+    json = call(PedantMcp::About)
+
+    assert_equal Pedant::VERSION, json.dig("pedant", "version")
+    assert_equal JSON.parse(Readout::About.new.to_h.to_json).keys, json.keys
+  end
+
   test "monitor_history is the history readout" do
     json = call(PedantMcp::MonitorHistory, monitor: "splat", checks: "1", state_changes: 1, hours: "24")
 
