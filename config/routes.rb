@@ -36,6 +36,14 @@ Rails.application.routes.draw do
     post :test, on: :member
   end
 
+  # API tokens for /mcp (ADR 0025): made here, shown once.
+  resources :api_tokens, only: %i[ create destroy ], path: "settings/api_tokens"
+
+  # The read-only MCP server (ADR 0025), for agents, with an API token. Only
+  # POST is spoken; GET (an event stream) and DELETE (a session) get 405.
+  post  "mcp", to: "mcp#create", as: :mcp
+  match "mcp", to: "mcp#method_not_allowed", via: %i[ get delete ]
+
   # Push monitors, on Kuma's URL shape (ADR 0012). PushTokenFilter has already
   # replaced the token with [FILTERED] by the time this matches.
   match "api/push/[FILTERED]", to: "pushes#create", via: %i[ get post ], as: :push

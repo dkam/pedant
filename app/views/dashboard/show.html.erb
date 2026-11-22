@@ -5,8 +5,7 @@
   <h1 class="text-2xl font-semibold">Monitors</h1>
   <% if @monitors.any? %>
     <p class="text-sm text-stone-600">
-      <% counts = @monitors.group_by(&:state).transform_values(&:size) %>
-      <%= %w[ down unknown warn pending up ].filter_map { |state| "#{counts[state]} #{state}" if counts[state] }.join(" · ") %>
+      <%= @readout.counts.map { |state, count| "#{count} #{state}" }.join(" · ") %>
     </p>
   <% end %>
 </div>
@@ -62,7 +61,7 @@
             <td class="hidden px-4 py-3 text-stone-600 sm:table-cell">
               <%= monitor.state_changed_at ? time_ago_in_words(monitor.state_changed_at) : "–" %>
             </td>
-            <td class="hidden px-4 py-3 text-stone-600 md:table-cell"><%= monitor.flaps %></td>
+            <td class="hidden px-4 py-3 text-stone-600 md:table-cell"><%= @readout.flaps(monitor) %></td>
             <td class="hidden px-4 py-3 text-stone-600 md:table-cell"><%= monitor.last_value ? monitor.format_value(monitor.last_value) : (monitor.last_latency_ms ? "#{monitor.last_latency_ms} ms" : "–") %></td>
           </tr>
         <% end %>

@@ -58,6 +58,8 @@
     </section>
   <% end %>
 
+  <%= render "settings/api_tokens" %>
+
   <%# A failed save re-renders this page; show that source as it was submitted, with its errors. %>
   <%= render "sources/sources",
         sources: Uptime::Source.order(:name).map { |source| source.id == @source&.id ? @source : source },

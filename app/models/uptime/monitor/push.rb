@@ -66,9 +66,8 @@ module Uptime::Monitor::Push
     Uptime::Forecast.new(points, reaches: value_settings["forecast"]["reaches"], now: now).time_left
   end
 
-  def forecast_in_words
+  def forecast_in_words(time_left = forecast_time_left)
     reaches = format_value(value_settings["forecast"]["reaches"].to_f)
-    time_left = forecast_time_left
     time_left ? "Reaches #{reaches} in about #{roughly(time_left)}" : "Not heading for #{reaches}"
   end
 

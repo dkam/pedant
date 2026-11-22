@@ -1,8 +1,9 @@
 class MonitorsController < ApplicationController
   def show
     @monitor = Uptime::Monitor.find(params[:id])
-    @checks = @monitor.checks.order(checked_at: :desc).limit(50)
-    @state_changes = @monitor.state_changes.order(changed_at: :desc).limit(20)
-    @chart_checks = @monitor.checks.order(checked_at: :desc).limit(100).reverse
+    history = Readout::History.new(@monitor)
+    @checks = history.checks
+    @state_changes = history.state_changes
+    @chart_checks = history.chart_checks
   end
 end

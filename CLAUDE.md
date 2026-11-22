@@ -83,12 +83,17 @@ rules as the UI:
 - Any change is a PR against booko-services (ADR 0002), never a direct deploy.
 - Nothing removes volumes (ADR 0001).
 
-An MCP server is an option for the agent-facing side. If it's built, use the
-official `mcp` gem, as splat does (`app/mcp/splat_mcp_server.rb`, served at
-`/mcp`) and spool does (`bin/mcp` over stdio, tools in `app/mcp`, see
-`../spool/docs/mcp.md`). Don't hand-roll the protocol: splat's hand-rolled
-server got stuck on the 2024-11-05 spec. Keep controllers thin enough that the
-HTML and JSON views share one query layer, so the API isn't a retrofit.
+The agent-facing side is a read-only MCP server at `POST /mcp` (ADR 0025),
+on the official `mcp` gem as in splat and spool. Don't hand-roll the protocol:
+splat's hand-rolled server got stuck on the 2024-11-05 spec.
+- Tools are in `app/mcp` and hold no logic. They read through `Readout`
+  (`app/models/readout/`), which the dashboard, monitor and alerts pages share,
+  so a JSON API later is a thin controller.
+- Each readout lists its fields. Never serialise a whole record, and never
+  return a channel's secret or settings, a push digest, or sign-in data.
+- Auth is a named API token from the settings page, stored as a digest, with
+  no expiry. `/mcp` is public at `pedant.booko.info`. The token protects it,
+  and an address with too many refused requests is turned away for a while.
 
 ## Stack
 

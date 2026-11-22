@@ -1,7 +1,8 @@
-# The front page: every active monitor, down first.
+# The front page: every active monitor, down first (Readout::Monitors).
 class DashboardController < ApplicationController
   def show
-    @monitors = Uptime::Monitor.active.by_urgency.includes(:source)
+    @readout = Readout::Monitors.new
+    @monitors = @readout.monitors
     @sources = Uptime::Source.all
   end
 end

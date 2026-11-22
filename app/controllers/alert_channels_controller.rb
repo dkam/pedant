@@ -15,7 +15,7 @@ class AlertChannelsController < ApplicationController
       redirect_to alerts_path, notice: "#{@channel.kind_name} saved."
     else
       @channels = AlertChannel::KINDS.keys.to_h { |kind| [ kind, kind == params[:kind] ? @channel : AlertChannel.for(kind) ] }
-      @alerts = Alert.includes(:monitor, deliveries: :channel).order(created_at: :desc, id: :desc).limit(50)
+      @alerts = Readout::Alerts.new.alerts
       render "alerts/index", status: :unprocessable_content
     end
   end

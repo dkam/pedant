@@ -44,6 +44,10 @@ gem "thruster", require: false
 gem "openid_connect"
 gem "jwt"
 
+# The read-only MCP server at /mcp (ADR 0025): the official gem, as splat and
+# spool use, rather than a hand-rolled protocol.
+gem "mcp", "~> 1.11"
+
 
 group :development, :test do
   # See https://guides.rubyonrails.org/debugging_rails_applications.html#debugging-with-the-debug-gem

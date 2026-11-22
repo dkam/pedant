@@ -144,3 +144,8 @@ without Gitea access. The issue remains the place for discussion.
   runs Pedant on grab01. The website is public at `pedant.booko.info`, and
   servers push over the tailnet to `http://grab01`, which is the only place
   that takes pushes.
+- [`decisions/0025-read-only-mcp-server.md`](decisions/0025-read-only-mcp-server.md)
+  serves a read-only MCP server for agents, public at
+  `pedant.booko.info/mcp` and protected by a token. Its tools read through
+  `Readout`, which the HTML views share. Its named bearer tokens are shown
+  once, stored as digests, and never expire.
