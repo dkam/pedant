@@ -17,10 +17,10 @@
       <%= form.submit "Sign in", class: "btn" %>
     <% end %>
   <% when :oidc %>
-    <p class="mt-2 text-sm text-stone-600">Pedant signs you in through your identity provider.</p>
+    <p class="mt-2 text-sm text-soft">Pedant signs you in through your identity provider.</p>
     <%= link_to "Sign in with #{OidcProvider.current.name}", login_start_path, class: "btn mt-6", data: { turbo: false } %>
   <% else %>
-    <p class="mt-2 text-sm text-stone-600">
+    <p class="mt-2 text-sm text-soft">
       Pedant isn't set up yet. The setup code is printed on the server's console.
     </p>
     <%= link_to "Set up Pedant", setup_path, class: "btn mt-6" %>

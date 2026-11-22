@@ -1,10 +1,71 @@
 @import "tailwindcss";
 
+/* Colour roles (ADR 0028). Views use these, never a palette colour such as
+   text-stone-600: each role has a light and a dark value, picked by
+   light-dark() from the page's color-scheme, so one stylesheet serves both
+   themes with no dark: variants. test/views/colour_roles_test.rb fails on a
+   palette colour in a view or helper.
+
+   The color-scheme is "light dark" by default, which follows the system. The
+   theme picker pins it by setting data-theme on <html> (see the layout and
+   theme_controller.js). */
+@theme {
+  /* Grounds: the page, the cards and fields on it, and a well inside a card
+     (code, a quiet badge). */
+  --color-canvas: light-dark(var(--color-stone-50), var(--color-stone-950));
+  --color-surface: light-dark(var(--color-white), var(--color-stone-900));
+  --color-well: light-dark(var(--color-stone-100), var(--color-stone-800));
+  --color-well-strong: light-dark(var(--color-stone-200), var(--color-stone-700));
+
+  /* Text, strongest first. Dark mode's lower weights sit a step lighter than
+     a mirror image would, so the small grey text stays readable. */
+  --color-ink: light-dark(var(--color-stone-900), var(--color-stone-100));
+  --color-ink-soft: light-dark(var(--color-stone-700), var(--color-stone-200));
+  --color-soft: light-dark(var(--color-stone-600), var(--color-stone-300));
+  --color-faint: light-dark(var(--color-stone-500), var(--color-stone-400));
+
+  /* Lines: row dividers, card borders, field borders. */
+  --color-rule-faint: light-dark(var(--color-stone-100), var(--color-stone-800));
+  --color-rule: light-dark(var(--color-stone-200), var(--color-stone-800));
+  --color-rule-strong: light-dark(var(--color-stone-300), var(--color-stone-700));
+
+  /* States: text, and the wash behind a badge. Up is good, down is bad. */
+  --color-good: light-dark(var(--color-green-800), var(--color-green-300));
+  --color-good-wash: light-dark(var(--color-green-100), color-mix(in oklab, var(--color-green-400) 15%, transparent));
+  --color-bad: light-dark(var(--color-red-800), var(--color-red-300));
+  --color-bad-wash: light-dark(var(--color-red-100), color-mix(in oklab, var(--color-red-400) 15%, transparent));
+  --color-warn: light-dark(var(--color-amber-800), var(--color-amber-300));
+  --color-warn-wash: light-dark(var(--color-amber-100), color-mix(in oklab, var(--color-amber-400) 15%, transparent));
+
+  /* A chart's limit lines: mid-tones, which read on either ground. */
+  --color-bad-line: var(--color-red-400);
+  --color-warn-line: var(--color-amber-400);
+}
+
+@layer base {
+  /* Also themes what the stylesheet doesn't: scrollbars, checkboxes, the
+     password field's reveal button. */
+  :root { color-scheme: light dark; }
+  :root[data-theme="light"] { color-scheme: light; }
+  :root[data-theme="dark"] { color-scheme: dark; }
+}
+
 @layer components {
-  .label { @apply block text-sm font-medium text-stone-700; }
-  .field { @apply mt-1 block w-full rounded-md border border-stone-300 bg-white px-3 py-2 text-stone-900 shadow-xs focus:border-stone-500 focus:outline-none; }
-  .hint { @apply mt-1 text-xs text-stone-500; }
-  .btn { @apply inline-block rounded-md bg-stone-900 px-4 py-2 text-sm font-medium text-white hover:bg-stone-700 cursor-pointer; }
-  .alert { @apply rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800; }
-  .notice { @apply rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800; }
+  .label { @apply block text-sm font-medium text-ink-soft; }
+  .field { @apply mt-1 block w-full rounded-md border border-rule-strong bg-surface px-3 py-2 text-ink shadow-xs focus:border-faint focus:outline-none; }
+  .hint { @apply mt-1 text-xs text-faint; }
+  .btn { @apply inline-block rounded-md bg-ink px-4 py-2 text-sm font-medium text-surface hover:bg-ink-soft cursor-pointer; }
+
+  /* Boxes for an error and for good news: a paler wash than a badge's, and a
+     border. */
+  .alert {
+    @apply rounded-md border px-4 py-3 text-sm text-bad;
+    border-color: light-dark(var(--color-red-200), color-mix(in oklab, var(--color-red-400) 30%, transparent));
+    background-color: light-dark(var(--color-red-50), color-mix(in oklab, var(--color-red-400) 8%, transparent));
+  }
+  .notice {
+    @apply rounded-md border px-4 py-3 text-sm text-good;
+    border-color: light-dark(var(--color-green-200), color-mix(in oklab, var(--color-green-400) 30%, transparent));
+    background-color: light-dark(var(--color-green-50), color-mix(in oklab, var(--color-green-400) 8%, transparent));
+  }
 }

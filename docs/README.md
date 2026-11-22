@@ -154,3 +154,7 @@ without Gitea access. The issue remains the place for discussion.
   push monitor's `from:` lists the addresses or ranges that may push to it,
   and without it only the tailnet may. Pedant must see the real client
   address, so a forged `Client-IP` is ignored.
+- [`decisions/0028-system-light-and-dark-themes.md`](decisions/0028-system-light-and-dark-themes.md)
+  offers System, Light and Dark, kept per browser in localStorage. Views use
+  colour roles (`text-ink`, `bg-surface`, `text-bad`), each a `light-dark()`
+  pair in the stylesheet, never palette colours; a test enforces it.

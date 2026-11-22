@@ -104,6 +104,9 @@ Matches the sibling apps in `../` (splat, spool, clinch):
 - Rails 8.1, SQLite (`sqlite3 >= 2.1`), Propshaft
 - Tailwind (`tailwindcss-rails`), Stimulus, Turbo, importmaps. No Node build, and
   no Phlex: plain ERB views.
+- Colours are roles from `app/assets/tailwind/application.css` (`text-ink`,
+  `bg-surface`, `text-bad`), never palette classes like `text-stone-600`, so
+  dark mode covers them (ADR 0028). A test fails on a palette class.
 - Solid Cache, Solid Cable
 - Thruster in front of Puma in the container
 - **Jobs: Solid Queue** (ADR 0010), using recurring tasks in
