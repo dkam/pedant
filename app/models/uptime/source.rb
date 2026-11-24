@@ -6,7 +6,9 @@
 # and retires none, and an invalid entry keeps its last good definition. The
 # errors are kept for the dashboard.
 class Uptime::Source < ApplicationRecord
-  FILES = [ "monitors.yml", "*/monitors.yml" ].freeze
+  # At any depth, so a stack's file sits beside its compose file whatever the
+  # repo's layout: <stack>/ or <host>/<stack>/. Hidden folders are skipped.
+  FILES = "**/monitors.{yml,yaml}"
   KEY = /\A[a-z0-9][a-z0-9_-]*\z/
   KINDS = Uptime::Monitor::KINDS
   FIELDS = {
@@ -83,7 +85,8 @@ class Uptime::Source < ApplicationRecord
         return [ entries, unreadable ]
       end
 
-      FILES.flat_map { |pattern| Dir.glob(pattern, base: path).sort }.each do |file|
+      # Shallowest first, so the root file keeps a key it shares with a stack's.
+      Dir.glob(FILES, base: path).sort_by { |file| [ file.count("/"), file ] }.each do |file|
         monitors_in(file, errors_found, unreadable)&.each do |key, entry|
           key = key.to_s
           definition, problems = definition_for(key, entry)

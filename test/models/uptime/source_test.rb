@@ -21,6 +21,40 @@ class Uptime::SourceTest < ActiveSupport::TestCase
     assert source.synced_at.present?
   end
 
+  test "a stack's file is read at any depth, as monitors.yml or monitors.yaml" do
+    source = monitor_source(
+      "hetz01/meili/monitors.yml" => { "meili" => { "http" => "http://meili.local:7700/health" } },
+      "misc01/clinch/monitors.yaml" => { "clinch" => { "http" => "https://clinch.aapamilne.com/" } },
+      "iroh-relay/monitors.yaml" => { "relay" => { "http" => "https://relay.silodrive.io/ping" } }
+    )
+
+    source.sync!
+
+    assert_equal({ "clinch" => "misc01/clinch/monitors.yaml", "meili" => "hetz01/meili/monitors.yml", "relay" => "iroh-relay/monitors.yaml" },
+      source.monitors.order(:key).pluck(:key, :defined_in).to_h)
+    assert_empty source.sync_error_list
+  end
+
+  test "a hidden folder's file isn't read" do
+    source = monitor_source(".github/monitors.yml" => { "splat" => { "http" => "http://splat.local:3030/up" } })
+
+    source.sync!
+
+    assert_empty source.monitors
+  end
+
+  test "the root file is read first, so a key it shares with a stack's file keeps the root's definition" do
+    source = monitor_source(
+      "monitors.yml" => { "meili" => { "http" => "http://meili.local:7700/health" } },
+      "hetz01/meili/monitors.yml" => { "meili" => { "http" => "http://other.local/" } }
+    )
+
+    source.sync!
+
+    assert_equal "http://meili.local:7700/health", source.monitors.sole.target
+    assert_includes source.sync_error_list, "hetz01/meili/monitors.yml: meili is already defined in monitors.yml"
+  end
+
   test "a new monitor is checked straight away" do
     source = monitor_source("monitors.yml" => { "splat" => { "http" => "http://splat.local:3030/up" } })
 

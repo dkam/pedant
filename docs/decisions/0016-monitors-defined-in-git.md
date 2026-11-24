@@ -90,3 +90,20 @@ forge credentials that needs.
 - Monitor sources are kept in Pedant's database, like the OIDC provider. If
   the database is wiped, the owner re-enters the source path, and the monitors
   rebuild from it.
+
+## Amendment (2026-11-24)
+
+"Where" put a stack's file beside its compose file, but the code read only the
+root and one folder down. booko-services has since moved most stacks to
+`<host>/<stack>/` (ADR 0001), so a `monitors.yml` beside
+`hetz01/meili/compose.yaml` was skipped without an error, and so was any
+`monitors.yaml`.
+
+- **Pedant reads `monitors.yml` and `monitors.yaml` at any depth,** skipping
+  hidden folders, so a stack's file is read whatever the repo's layout.
+- **Files are read shallowest first.** A key in both the root file and a
+  stack's keeps the root's definition, and the stack's is reported as a
+  duplicate.
+- **Moving an entry into its stack's folder keeps its history,** since
+  monitors are matched by key within a source. Move it in one commit, or the
+  sync in between reports the duplicate.
