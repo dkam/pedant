@@ -139,6 +139,10 @@ Not Postgres, not Redis, not Sidekiq.
     `tea --login booko --repo dkam/pedant`. Don't use GitHub issues.
   - The design discussion (Booko/booko-services#5) and the booko-services repo
     that doco-cd will watch are on Gitea too.
+  - **Gitea has a copy of the code** (ADR 0031). On tachi, the `github`
+    remote pushes to GitHub and Gitea both, so push as usual. Gitea Actions is
+    off for `dkam/pedant`: keep it off, because it would run
+    `.github/workflows` there too.
 
 ## Where it runs and who can log in
 

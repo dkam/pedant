@@ -167,3 +167,7 @@ without Gitea access. The issue remains the place for discussion.
   `.doco-cd.<host>.yml`, with any number of them (silodrive-infra beside
   booko-services). A host's desired state is the union across sources, a plan
   is a PR in one repo, and every repo that deploys carries the delete guard.
+- [`decisions/0031-code-copied-to-gitea.md`](decisions/0031-code-copied-to-gitea.md)
+  copies the code to Gitea's `dkam/pedant`, beside the issues: the `github`
+  remote pushes to both, Gitea Actions stays off, and GitHub keeps CI, release
+  tags and images.
