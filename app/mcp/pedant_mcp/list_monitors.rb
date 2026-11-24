@@ -1,8 +1,8 @@
 module PedantMcp
   class ListMonitors < MCP::Tool
     tool_name "list_monitors"
-    description "Every monitor with its state, since when, and how often it went down in the last 24 hours " \
-      "and 7 days. Down first, then unknown, warn and pending, then up. counts covers every active monitor, " \
+    description "Every monitor with its state, since when, and how many outages it had in the last 24 hours " \
+      "and 7 days (one still going counts). Down first, then unknown, warn and pending, then up. counts covers every active monitor, " \
       "whatever the filters. Retired monitors (removed from monitors.yml) are left out unless asked for."
     annotations(read_only_hint: true, destructive_hint: false, idempotent_hint: true, open_world_hint: false)
     input_schema(

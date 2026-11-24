@@ -88,6 +88,45 @@ class Uptime::MonitorTest < ActiveSupport::TestCase
     assert_equal 4, @monitor.flaps(within: 3.days)
   end
 
+  # A month-long outage read "down 0 times in 24 hours" while it was down.
+  test "an outage still open from before the window counts in it" do
+    travel_to 30.days.ago do
+      2.times { @monitor.record(result("down")) }
+    end
+    @monitor.record(result("down"))
+
+    assert_equal [ 1, 1 ], [ @monitor.flaps, @monitor.flaps(within: 7.days) ]
+  end
+
+  test "an outage from before the window that ended in it counts in it" do
+    travel_to 3.days.ago do
+      2.times { @monitor.record(result("down")) }
+    end
+    travel_to 12.hours.ago do
+      @monitor.record(result("up"))
+    end
+
+    assert_equal 1, @monitor.flaps
+  end
+
+  test "an outage that ended before the window doesn't count in it" do
+    travel_to 3.days.ago do
+      2.times { @monitor.record(result("down")) }
+      @monitor.record(result("up"))
+    end
+
+    assert_equal 0, @monitor.flaps
+  end
+
+  # As for alerts: unknown neither opens an outage nor closes one.
+  test "down, unknown, then down again is one outage" do
+    2.times { @monitor.record(result("down")) }
+    @monitor.record(result("unknown", message: "Pedant is offline"))
+    @monitor.record(result("down"))
+
+    assert_equal 1, @monitor.flaps
+  end
+
   test "each result schedules the next check one interval on" do
     freeze_time do
       @monitor.record(result("up"))

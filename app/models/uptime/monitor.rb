@@ -75,10 +75,10 @@ class Uptime::Monitor < ApplicationRecord
     claimed
   end
 
-  # How many times it went down in the window: the "how often does it flap"
-  # half of the liveness model.
+  # How many outages overlap the window, counting one still open from before
+  # it: the "how often does it flap" half of the liveness model (ADR 0026).
   def flaps(within: 24.hours)
-    state_changes.where(to_state: "down", changed_at: within.ago..).count
+    Uptime::StateChange.outages_within([ id ], [ within ]).fetch(id).sole
   end
 
   # An active check asks the target. A push monitor is only checked once it's

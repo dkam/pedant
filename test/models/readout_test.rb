@@ -52,6 +52,15 @@ class ReadoutTest < ActiveSupport::TestCase
     assert_equal @splat.flaps(within: 7.days), flaps[@splat.id][:week]
   end
 
+  test "flaps count an outage still open from before the window, for many monitors at once" do
+    travel_to 30.days.ago do
+      @splat.record(Uptime::Result.new(status: "down", message: "HTTP 502"))
+    end
+    @splat.record(Uptime::Result.new(status: "down", message: "HTTP 502"))
+
+    assert_equal({ day: 1, week: 1 }, Readout.flaps_for([ @splat, @kith ])[@splat.id])
+  end
+
   test "a monitor is found by key or by id" do
     assert_equal @splat, Readout.find_monitor("splat")
     assert_equal @splat, Readout.find_monitor(@splat.id.to_s)

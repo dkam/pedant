@@ -61,15 +61,12 @@ module Readout
     }
   end
 
-  # How many times each monitor went down in the last day and week, in two
-  # queries rather than two per monitor: the "how often does it flap" half of
-  # the liveness model (Uptime::Monitor#flaps).
+  # How many outages each monitor had in the last day and week, counting one
+  # still open from before, in two queries rather than two per monitor: the
+  # "how often does it flap" half of the liveness model (Uptime::Monitor#flaps).
   def flaps_for(monitors, now: Time.current)
-    ids = monitors.map(&:id)
-    downs = Uptime::StateChange.where(monitor_id: ids, to_state: "down")
-    day = downs.where(changed_at: (now - 24.hours)..).group(:monitor_id).count
-    week = downs.where(changed_at: (now - 7.days)..).group(:monitor_id).count
-    ids.index_with { |id| { day: day.fetch(id, 0), week: week.fetch(id, 0) } }
+    Uptime::StateChange.outages_within(monitors.map(&:id), [ 24.hours, 7.days ], now: now)
+      .transform_values { |day, week| { day: day, week: week } }
   end
 
   def iso(time) = time&.utc&.iso8601
