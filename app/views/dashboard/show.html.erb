@@ -5,7 +5,7 @@
   <h1 class="text-2xl font-semibold">Monitors</h1>
   <% if @monitors.any? %>
     <p class="text-sm text-soft">
-      <%= @readout.counts.map { |state, count| "#{count} #{state}" }.join(" · ") %>
+      <%= dashboard_counts(@readout.counts, hidden: @readout.hidden) %>
     </p>
   <% end %>
 </div>
@@ -51,13 +51,15 @@
             <td class="px-4 py-3">
               <%= link_to monitor.name, monitor_path(monitor), class: "font-medium hover:underline" %>
               <div class="max-w-xs truncate text-xs text-faint sm:max-w-md"><%= monitor_target(monitor) %></div>
-              <% if monitor.state != "up" && monitor.last_message.present? %>
+              <% if monitor.hidden? %>
+                <div class="text-xs text-faint">Hidden <%= hidden_in_words(monitor) %>: <%= monitor.last_message %></div>
+              <% elsif monitor.state != "up" && monitor.last_message.present? %>
                 <div class="text-xs text-bad"><%= monitor.last_message %></div>
               <% elsif monitor.retrying? %>
                 <div class="text-xs text-warn">Retrying (<%= monitor.consecutive_failures %> of <%= monitor.retries %>): <%= monitor.last_message %></div>
               <% end %>
             </td>
-            <td class="px-4 py-3"><%= render "monitors/state", state: monitor.state %></td>
+            <td class="px-4 py-3"><%= render "monitors/state", state: monitor.hidden? ? "hidden" : monitor.state %></td>
             <td class="hidden px-4 py-3 text-soft sm:table-cell">
               <%= monitor.state_changed_at ? time_ago_in_words(monitor.state_changed_at) : "–" %>
             </td>

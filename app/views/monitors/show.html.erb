@@ -25,6 +25,28 @@
   <div><dt class="text-faint">Defined in</dt><dd class="font-mono"><%= @monitor.source.name %>: <%= @monitor.defined_in %></dd></div>
 </dl>
 
+<% if @monitor.state == "down" && @monitor.outage_started_at && !@monitor.retired? %>
+  <section data-hide class="mt-6 rounded-lg border border-rule bg-surface p-6 text-sm">
+    <% if @monitor.hidden? %>
+      <p>Hidden <%= hidden_in_words(@monitor) %>. No reminders until then, and recovering ends it. If it's still down then, a reminder goes out straight away.</p>
+      <%= button_to "Show it again", monitor_hide_path(@monitor), method: :delete, class: "btn mt-3" %>
+    <% else %>
+      <h2 class="font-semibold">Hide this outage</h2>
+      <p class="mt-1 text-soft">
+        If you know why it's down, hide it: no reminders, and it moves out of the way on the dashboard. Recovering ends it,
+        and if it's still down when the hide ends, a reminder goes out straight away. To silence it for good, change monitors.yml.
+      </p>
+      <div class="mt-3 flex flex-wrap gap-2">
+        <% if @monitor.push? %>
+          <%= button_to "Until its next run", monitor_hide_path(@monitor), params: { until: "next_run" }, class: "btn",
+                title: "Until its next push, or until #{@monitor.next_check_at&.utc&.strftime("%-d %b %H:%M UTC")} if none comes" %>
+        <% end %>
+        <%= button_to "For 24 hours", monitor_hide_path(@monitor), params: { until: "day" }, class: "btn" %>
+      </div>
+    <% end %>
+  </section>
+<% end %>
+
 <% if @monitor.push? %>
   <section class="mt-6 rounded-lg border border-rule bg-surface p-6 text-sm">
     <h2 class="font-semibold">Pushing to it</h2>

@@ -41,7 +41,8 @@ module Uptime::Monitor::Push
   end
 
   # A push arrived. A push monitor has no retries: the job said how it went.
-  # If a run was started, this is its finish.
+  # If a run was started, this is its finish. It ends a hide that waited for
+  # the next run (ADR 0033): recovering clears it, and a failure reminds.
   def record_push(result)
     now = Time.current
     if started_at
@@ -49,7 +50,12 @@ module Uptime::Monitor::Push
       self.started_at = nil
     end
     self.last_pushed_at = now
-    record(result)
+
+    transaction do
+      waited_for_this = hidden_until_next_push
+      record(result)
+      end_hide(now) if waited_for_this && hidden_until
+    end
   end
 
   # status=start. With a max_runtime, the run must finish by then.

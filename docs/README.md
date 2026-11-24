@@ -177,3 +177,9 @@ without Gitea access. The issue remains the place for discussion.
   working tree. It's worked out when asked, never stored. A variable in an
   image is filled in from plaintext files only, and one an encrypted file sets
   is shown as written.
+- [`decisions/0033-hide-a-down-monitor-for-one-outage.md`](decisions/0033-hide-a-down-monitor-for-one-outage.md)
+  lets the owner hide a down monitor for its current outage: until its next
+  run (a push monitor) or for 24 hours. While hidden, it sends no reminders
+  and is muted on the dashboard. Recovering ends the hide, and a reminder goes
+  out at once if it ends with the monitor still down. It's kept in SQLite, since
+  it's about an observed outage, not the monitor's definition.

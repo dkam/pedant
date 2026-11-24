@@ -5,7 +5,7 @@ require "test_helper"
 # column that turned up in the output by itself.
 class ReadoutTest < ActiveSupport::TestCase
   MONITOR_FIELDS = %i[
-    id key name kind target defined_in state state_since retired_at outage_started_at failures_in_a_row retries
+    id key name kind target defined_in state state_since retired_at outage_started_at hidden_until hidden_until_next_push failures_in_a_row retries
     down_in_24h down_in_7d last_checked_at last_message last_latency_ms last_value last_pushed_at
   ].freeze
 

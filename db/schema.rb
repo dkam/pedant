@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_24_130000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_24_140000) do
   create_table "alert_channels", force: :cascade do |t|
     t.string "type", null: false
     t.boolean "enabled", default: true, null: false
@@ -128,6 +128,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_24_130000) do
     t.datetime "started_at"
     t.datetime "outage_started_at"
     t.datetime "reminded_at"
+    t.datetime "hidden_at"
+    t.datetime "hidden_until"
+    t.boolean "hidden_until_next_push", default: false, null: false
     t.index ["kind", "target"], name: "index_uptime_monitors_on_kind_and_target"
     t.index ["next_check_at"], name: "index_uptime_monitors_on_next_check_at"
     t.index ["source_id", "key"], name: "index_uptime_monitors_on_source_id_and_key", unique: true

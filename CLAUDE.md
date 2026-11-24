@@ -66,7 +66,9 @@ Kuma does two things, and Pedant replaces both. Seed both from Kuma's export
   - Pedant sends a heartbeat so its own silence raises an alarm (ADR 0008).
 - **Alerts:** ntfy and email, configured on the `/alerts` page. Alerts go out
   once per outage on down, on recovery, and as reminders (`remind_every`)
-  while it stays down, never for "unknown" (ADRs 0013, 0020).
+  while it stays down, never for "unknown" (ADRs 0013, 0020). The owner can
+  hide a down monitor for its current outage, until its next run or for 24
+  hours. This holds back its reminders, and is kept in SQLite (ADR 0033).
 - **Fleet inventory over SSH: optional, undecided.** If built, it uses
   `docker ps` and field-selected `docker inspect`. **Never run a bare
   `docker inspect` or read `.Config.Env`, because it returns secrets in

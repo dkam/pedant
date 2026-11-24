@@ -49,6 +49,10 @@ module Readout
       state_since: iso(monitor.state_changed_at),
       retired_at: iso(monitor.retired_at),
       outage_started_at: iso(monitor.outage_started_at),
+      # Hidden by the owner for this outage (ADR 0033): no reminders until
+      # then, or until its next push when hidden_until_next_push.
+      hidden_until: (iso(monitor.hidden_until) if monitor.hidden?),
+      hidden_until_next_push: monitor.hidden? && monitor.hidden_until_next_push,
       failures_in_a_row: monitor.consecutive_failures,
       retries: monitor.retries,
       down_in_24h: flaps.fetch(:day),

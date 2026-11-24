@@ -16,6 +16,20 @@ module MonitorsHelper
       .to_sentence(two_words_connector: " or ", last_word_connector: ", or ")
   end
 
+  # "2 down · 1 hidden · 30 up": hidden ones are down, but counted apart.
+  def dashboard_counts(counts, hidden:)
+    counts = counts.dup
+    counts["down"] -= hidden if hidden.positive?
+    counts = counts.flat_map { |state, count| state == "down" ? [ [ state, count ], [ "hidden", hidden ] ] : [ [ state, count ] ] }
+    counts.reject { |_state, count| count.zero? }.map { |state, count| "#{count} #{state}" }.join(" · ")
+  end
+
+  # "for about 18 hours more, or until its next push" (ADR 0033).
+  def hidden_in_words(monitor)
+    words = "for #{distance_of_time_in_words(Time.current, monitor.hidden_until)} more"
+    monitor.hidden_until_next_push ? "#{words}, or until its next push" : words
+  end
+
   def seconds_in_words(seconds)
     ActiveSupport::Duration.build(seconds).inspect
   end

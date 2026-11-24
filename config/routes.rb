@@ -25,7 +25,11 @@ Rails.application.routes.draw do
 
   # Monitors are defined in git (ADR 0016): Pedant shows them and edits only
   # where it reads them from.
-  resources :monitors, only: :show
+  resources :monitors, only: :show do
+    # Hiding a down monitor for its current outage (ADR 0033). That's about an
+    # outage Pedant observed, not the monitor's definition.
+    resource :hide, only: %i[ create destroy ], controller: "monitor_hides"
+  end
   resources :sources, only: %i[ create update ] do
     post :sync, on: :member
   end
