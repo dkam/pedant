@@ -30,6 +30,9 @@ Rails.application.routes.draw do
     post :sync, on: :member
   end
 
+  # What git says each host should run, and later what runs (dkam/pedant#16).
+  resources :deployments, only: :index
+
   # Alerts (ADR 0013): channel settings, a test per channel, and the log.
   resources :alerts, only: :index
   resources :alert_channels, only: :update, param: :kind do

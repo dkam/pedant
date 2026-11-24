@@ -43,6 +43,25 @@ module MonitorFiles
     IO.popen([ "git", "-C", dir, "rev-parse", "HEAD" ], &:read).strip
   end
 
+  # A source whose checkout is a git repo of these files, committed and
+  # synced, so it has a commit to be read at. files: { "path" => "content" }.
+  def git_source(files, name = "booko-services")
+    @monitor_dirs ||= []
+    dir = Dir.mktmpdir("pedant-source")
+    @monitor_dirs << dir
+    files.each do |relative, content|
+      FileUtils.mkdir_p(File.dirname(File.join(dir, relative)))
+      File.write(File.join(dir, relative), content)
+    end
+    git_commit_all(dir)
+    Source.create!(name: name, path: dir).tap(&:sync!)
+  end
+
+  # A compose file running these images: { service => image }.
+  def compose_file(services)
+    { "services" => services.to_h { |service, image| [ service.to_s, { "image" => image } ] } }.to_yaml
+  end
+
   def self.included(base)
     base.teardown { Array(@monitor_dirs).each { |dir| FileUtils.rm_rf(dir) } }
   end

@@ -171,3 +171,9 @@ without Gitea access. The issue remains the place for discussion.
   copies the code to Gitea's `dkam/pedant`, beside the issues: the `github`
   remote pushes to both, Gitea Actions stays off, and GitHub keeps CI, release
   tags and images.
+- [`decisions/0032-deployments-read-from-git-at-the-synced-commit.md`](decisions/0032-deployments-read-from-git-at-the-synced-commit.md)
+  reads what each host should run from `.doco-cd.<host>.yml` in every source,
+  as doco-cd reads it, at the commit the last sync recorded, not from the
+  working tree. It's worked out when asked, never stored. A variable in an
+  image is filled in from plaintext files only, and one an encrypted file sets
+  is shown as written.

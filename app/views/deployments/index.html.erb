@@ -1,0 +1,78 @@
+<% content_for :title, "Deployments · Pedant" %>
+
+<h1 class="text-2xl font-semibold">Deployments</h1>
+<p class="mt-1 text-sm text-soft">
+  What git says each host should run, from the <code class="font-mono">.doco-cd.&lt;host&gt;.yml</code> files doco-cd deploys from.
+  Pedant doesn't hear from the hosts yet, so what's actually running isn't shown here.
+</p>
+
+<% if @readout.reads.any? %>
+  <ul class="mt-4 space-y-1 text-sm">
+    <% @readout.reads.each do |read| %>
+      <li data-source-name="<%= read.source.name %>">
+        <span class="font-medium"><%= read.source.name %></span><% if read.commit_sha %> at <code class="font-mono" title="<%= read.commit_sha %>"><%= read.commit_sha.first(7) %></code><% end %><% if read.source.synced_at %><span class="text-faint">, synced <%= time_ago_in_words(read.source.synced_at) %> ago</span><% end %>
+        <% if read.source.dirty %>· <span class="text-warn">local changes, which aren't read</span><% end %>
+        <% if read.note %>· <span class="<%= read.commit_sha ? "text-warn" : "text-faint" %>"><%= read.note %></span><% end %>
+      </li>
+    <% end %>
+  </ul>
+<% end %>
+
+<% if @readout.problems.any? %>
+  <div class="alert mt-6">
+    <p class="font-medium">Problems in the deploy files. Everything else in them is shown.</p>
+    <ul class="mt-2 list-disc space-y-1 pl-4 font-mono text-xs">
+      <% @readout.problems.each do |problem| %><li><%= problem %></li><% end %>
+    </ul>
+  </div>
+<% end %>
+
+<% if @readout.hosts.none? %>
+  <div class="mt-8 rounded-lg border border-rule bg-surface p-6 text-sm text-soft">
+    No source declares a deployment yet. doco-cd deploys a host's stacks from a
+    <code class="font-mono">.doco-cd.&lt;host&gt;.yml</code> at the top of a repo, and Pedant reads the same file from each of its
+    <%= link_to "sources", settings_path, class: "underline" %>.
+  </div>
+<% end %>
+
+<% @readout.hosts.each do |host| %>
+  <section data-host="<%= host.name %>" class="mt-8">
+    <h2 class="text-lg font-semibold"><%= host.name %></h2>
+    <% if host.stacks.none? %>
+      <p class="mt-2 text-sm text-soft">Its deploy file declares no stacks.</p>
+    <% else %>
+      <div class="mt-3 overflow-hidden rounded-lg border border-rule bg-surface">
+        <table class="w-full text-sm">
+          <thead class="bg-canvas text-left text-xs uppercase tracking-wide text-faint">
+            <tr>
+              <th class="w-2/5 px-4 py-2">Stack</th>
+              <th class="px-4 py-2">Images in git</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-rule-faint">
+            <% host.stacks.each do |stack| %>
+              <tr data-stack="<%= stack.name %>" class="align-top">
+                <td class="px-4 py-3">
+                  <div class="font-medium"><%= stack.name %></div>
+                  <div class="text-xs text-faint"><%= stack.source.name %>: <%= folder(stack.working_dir) %></div>
+                  <% stack.notes.each do |note| %><div class="text-xs text-faint"><%= note %></div><% end %>
+                </td>
+                <td class="px-4 py-3">
+                  <% if stack.services.none? %>
+                    <span class="text-faint">–</span>
+                  <% else %>
+                    <ul class="space-y-1">
+                      <% stack.services.each do |service| %>
+                        <li data-service="<%= service.name %>"><span class="text-soft"><%= service.name %></span> <%= image_reference(service) %></li>
+                      <% end %>
+                    </ul>
+                  <% end %>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    <% end %>
+  </section>
+<% end %>
