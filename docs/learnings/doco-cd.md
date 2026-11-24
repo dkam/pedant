@@ -75,7 +75,16 @@ doco-cd has its own MCP endpoint at `/mcp` (`Endpoints/MCP-Server.md`).
 
 - **Sync windows:** timezone-aware windows controlling when deploys may happen.
 - **Cron-scheduled polling.**
-- **Notifications** through Apprise, which can POST JSON to Pedant.
+- **Notifications need a separate Apprise API server,** one more container
+  beside doco-cd (`caronc/apprise` in the example; no published port needed).
+  doco-cd POSTs to `APPRISE_API_URL` when a deploy starts, finishes or fails,
+  and on reconciliation, above `APPRISE_NOTIFY_LEVEL`. An unchanged failure is
+  repeated only once per `APPRISE_NOTIFY_REPEAT_INTERVAL`. Title and body can
+  be Go templates, the destinations can come from a file
+  (`APPRISE_NOTIFY_URLS_FILE`), and Apprise gives up after 30s so it can't hold
+  up a deploy. Apprise can send to ntfy, or POST JSON to Pedant.
+  (`Advanced/Notifications.md`, v0.136.0, read 2026-11-24.) None are set up on
+  misc01.
 - **Prometheus metrics,** including MCP request metrics.
 - **OCI artifacts** as a deploy source, as well as git.
 - **Reconciliation:** event-driven, and it can restore workloads changed outside
