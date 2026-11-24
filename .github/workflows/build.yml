@@ -6,25 +6,20 @@ name: Build and publish image
 # them into one manifest, and a final job creates the matching git tag and
 # GitHub Release.
 #
-# Three image tags, each answering a different question:
+# Two image tags:
 #
 #   :vX.Y.Z   immutable — exactly this build, forever. Pin production to it.
-#   :latest   newest *release*. Never moves for a pre-release.
-#   :dev      newest build from main, pre-release or release, whichever came
-#             last. An instance pinned to :dev with `pull_policy: always`
-#             therefore tracks the tip of development with no compose edits.
+#   :latest   newest *release* from main. Never moves for a pre-release.
 #
-# :dev moves on releases too, deliberately: if it only followed pre-releases it
-# would go stale the moment a real release shipped, and the instance tracking it
-# would sit on an older image than :latest — the opposite of what it's for.
+# There's no :dev. It was splat's, for an instance tracking main; Pedant has
+# one instance, pinned to a version, and nothing pulled :dev.
 #
-# Branch builds (workflow_dispatch on a non-main ref) publish :vX.Y.Z only, so a
-# feature branch can't hijack an instance that pulls :dev.
+# Branch builds (workflow_dispatch on a non-main ref) publish :vX.Y.Z only:
+# they don't move :latest or tag the commit.
 #
 # To cut a release: edit Pedant::VERSION in config/version.rb, commit, push.
-# For a dev build: set a pre-release version (e.g. "1.1.0-dev") — it publishes
-# :v1.1.0-dev, moves :dev, does not move :latest, and creates no git tag. Or run
-# this workflow manually.
+# A pre-release version (e.g. "1.1.0-dev") publishes :v1.1.0-dev only, with no
+# git tag. Or run this workflow manually.
 #
 # The `tag` job at the bottom is copied from splat, where image tags kept
 # moving while git tags stopped (config/version.rb reached 1.14.0 with the
@@ -48,7 +43,6 @@ jobs:
     outputs:
       version: ${{ steps.version.outputs.version }}
       latest: ${{ steps.version.outputs.latest }}
-      dev: ${{ steps.version.outputs.dev }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
@@ -58,15 +52,13 @@ jobs:
         run: |
           V=$(ruby -e "require './config/version'; puts Pedant::VERSION")
           echo "version=$V" >> "$GITHUB_OUTPUT"
-          # A pre-release (e.g. 1.1.0-dev) publishes its own tag but not :latest.
-          if [[ "$V" == *-* ]]; then latest=false; else latest=true; fi
+          # A pre-release (e.g. 1.1.0-dev) publishes its own tag but not
+          # :latest. Gated on the ref too, because workflow_dispatch can run on
+          # any branch, and a branch build should never move :latest or be
+          # tagged as a release.
+          if [[ "$V" != *-* && "$GITHUB_REF" = "refs/heads/main" ]]; then latest=true; else latest=false; fi
           echo "latest=$latest" >> "$GITHUB_OUTPUT"
-          # :dev follows main whatever the version kind. Gated on the ref
-          # because workflow_dispatch can run on any branch, and an instance
-          # auto-pulling :dev should never silently land on a feature branch.
-          if [ "$GITHUB_REF" = "refs/heads/main" ]; then dev=true; else dev=false; fi
-          echo "dev=$dev" >> "$GITHUB_OUTPUT"
-          echo "Building v$V (move :latest = $latest, move :dev = $dev)"
+          echo "Building v$V (move :latest = $latest)"
 
   build:
     needs: prepare
@@ -159,9 +151,6 @@ jobs:
         working-directory: /tmp/digests
         run: |
           tags="-t ${{ env.IMAGE }}:v${{ needs.prepare.outputs.version }}"
-          if [ "${{ needs.prepare.outputs.dev }}" = "true" ]; then
-            tags="$tags -t ${{ env.IMAGE }}:dev"
-          fi
           if [ "${{ needs.prepare.outputs.latest }}" = "true" ]; then
             tags="$tags -t ${{ env.IMAGE }}:latest"
           fi

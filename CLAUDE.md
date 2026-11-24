@@ -126,8 +126,9 @@ Not Postgres, not Redis, not Sidekiq.
 - **Releases are file-driven** (see
   `../splat/docs/decisions/0004-file-driven-releases.md`): CI publishes when
   `config/version.rb` changes on main, and tags the commit `vX.Y.Z`.
-- Image tags are `:vX.Y.Z` (immutable), `:latest` (newest release; never moved
-  by a `-dev` version) and `:dev` (newest build from main).
+- Image tags are `:vX.Y.Z` (immutable) and `:latest` (newest release from
+  main; never moved by a `-dev` version). There's no `:dev`: Pedant has one
+  instance, pinned to a version.
 - The image carries `org.opencontainers.image.version` and `.revision` labels.
   Pedant reads these labels on other apps, so it should carry them itself.
 - `GIT_SHA` build arg, read at boot by `config/initializers/revision.rb`.
