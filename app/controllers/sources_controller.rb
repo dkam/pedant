@@ -2,25 +2,25 @@
 # page; saving or syncing reads the files straight away.
 class SourcesController < ApplicationController
   def create
-    @source = Uptime::Source.new(source_params)
+    @source = Source.new(source_params)
     save_and_sync "Source added."
   end
 
   def update
-    @source = Uptime::Source.find(params[:id])
+    @source = Source.find(params[:id])
     @source.assign_attributes(source_params)
     save_and_sync "Source saved."
   end
 
   def sync
-    source = Uptime::Source.find(params[:id])
+    source = Source.find(params[:id])
     source.sync!
     redirect_to settings_path, notice: "#{source.name} synced."
   end
 
   private
     def source_params
-      params.expect(uptime_source: %i[ name path ])
+      params.expect(source: %i[ name path ])
     end
 
     def save_and_sync(notice)

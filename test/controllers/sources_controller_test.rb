@@ -10,35 +10,35 @@ class SourcesControllerTest < ActionDispatch::IntegrationTest
   teardown { FileUtils.rm_rf(@dir) }
 
   test "adding a source needs a login" do
-    post sources_url, params: { uptime_source: { name: "koti", path: @dir } }
+    post sources_url, params: { source: { name: "koti", path: @dir } }
 
     assert_redirected_to login_url
-    assert_empty Uptime::Source.all
+    assert_empty Source.all
   end
 
   test "adding a source syncs it straight away" do
     sign_in_with_password
 
-    post sources_url, params: { uptime_source: { name: "koti", path: @dir } }
+    post sources_url, params: { source: { name: "koti", path: @dir } }
 
     assert_redirected_to settings_url
-    assert_equal [ "splat" ], Uptime::Source.sole.monitors.pluck(:key)
+    assert_equal [ "splat" ], Source.sole.monitors.pluck(:key)
   end
 
   test "a path that isn't a directory is refused" do
     sign_in_with_password
 
-    post sources_url, params: { uptime_source: { name: "koti", path: "/does/not/exist" } }
+    post sources_url, params: { source: { name: "koti", path: "/does/not/exist" } }
 
     assert_response :unprocessable_content
-    assert_empty Uptime::Source.all
+    assert_empty Source.all
   end
 
   test "changing a source's path and syncing it now" do
     sign_in_with_password
-    source = Uptime::Source.create!(name: "koti", path: Dir.tmpdir)
+    source = Source.create!(name: "koti", path: Dir.tmpdir)
 
-    patch source_url(source), params: { uptime_source: { path: @dir } }
+    patch source_url(source), params: { source: { path: @dir } }
     assert_redirected_to settings_url
     assert_equal [ "splat" ], source.monitors.pluck(:key)
 
@@ -50,9 +50,9 @@ class SourcesControllerTest < ActionDispatch::IntegrationTest
 
   test "an invalid new path for a source is refused, and says why" do
     sign_in_with_password
-    source = Uptime::Source.create!(name: "koti", path: @dir)
+    source = Source.create!(name: "koti", path: @dir)
 
-    patch source_url(source), params: { uptime_source: { path: "/does/not/exist" } }
+    patch source_url(source), params: { source: { path: "/does/not/exist" } }
 
     assert_response :unprocessable_content
     assert_select "[data-source] .alert", /isn't a directory/
@@ -61,11 +61,25 @@ class SourcesControllerTest < ActionDispatch::IntegrationTest
 
   test "settings list the sources and how their last sync went" do
     sign_in_with_password
-    Uptime::Source.create!(name: "koti", path: @dir).sync!
+    Source.create!(name: "koti", path: @dir).sync!
 
     get settings_url
 
     assert_select "[data-source]", /koti/
     assert_select "form[action=?]", sources_path
+  end
+
+  # The forms take their field names from the model's class, so renaming it
+  # renames the parameters the controller expects.
+  test "the source forms send the fields the controller expects" do
+    sign_in_with_password
+    source = Source.create!(name: "koti", path: @dir)
+
+    get settings_url
+
+    assert_select "form[action=?] input[name=?]", sources_path, "source[name]"
+    assert_select "form[action=?] input[name=?]", sources_path, "source[path]"
+    # A saved source's name can't be changed; only its path.
+    assert_select "form[action=?] input[name=?]", source_path(source), "source[path]"
   end
 end

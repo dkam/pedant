@@ -3,6 +3,6 @@ class DashboardController < ApplicationController
   def show
     @readout = Readout::Monitors.new
     @monitors = @readout.monitors
-    @sources = Uptime::Source.all
+    @sources = Source.all
   end
 end

@@ -1,6 +1,6 @@
 require "test_helper"
 
-class Uptime::SourceTest < ActiveSupport::TestCase
+class SourceTest < ActiveSupport::TestCase
   test "monitors are read from the root file and from each stack's file, with defaults filled in" do
     source = monitor_source(
       "monitors.yml" => { "caddy" => { "http" => "https://clinch.aapamilne.com/" } },
@@ -185,9 +185,9 @@ class Uptime::SourceTest < ActiveSupport::TestCase
   end
 
   test "the path must be an absolute path to a directory" do
-    assert_not Uptime::Source.new(name: "koti", path: "relative/path").valid?
-    assert_not Uptime::Source.new(name: "koti", path: "/does/not/exist").valid?
-    assert Uptime::Source.new(name: "koti", path: Dir.tmpdir).valid?
+    assert_not Source.new(name: "koti", path: "relative/path").valid?
+    assert_not Source.new(name: "koti", path: "/does/not/exist").valid?
+    assert Source.new(name: "koti", path: Dir.tmpdir).valid?
   end
 
   test "a push monitor holds its token's digest, needs an interval, and gets a minute's grace" do

@@ -1,11 +1,12 @@
-# A stacks checkout that monitors.yml files are read from (ADR 0016). In
-# milestone 1 it's a local directory the owner keeps up to date.
+# A stacks repo that monitors.yml files are read from (ADR 0016), and later
+# each host's desired deployments (ADR 0030). For now it's a local checkout
+# the owner keeps up to date.
 #
 # Syncing copies each entry's definition onto its monitor. Nothing a broken
 # file says is applied: a file that doesn't parse changes none of its monitors
 # and retires none, and an invalid entry keeps its last good definition. The
 # errors are kept for the dashboard.
-class Uptime::Source < ApplicationRecord
+class Source < ApplicationRecord
   # At any depth, so a stack's file sits beside its compose file whatever the
   # repo's layout: <stack>/ or <host>/<stack>/. Hidden folders are skipped.
   FILES = "**/monitors.{yml,yaml}"
@@ -33,7 +34,7 @@ class Uptime::Source < ApplicationRecord
   DURATION = /\A(\d+)\s*(s|m|h|d)\z/
   DURATION_UNITS = { "s" => 1, "m" => 60, "h" => 3600, "d" => 86_400 }.freeze
 
-  has_many :monitors, dependent: :restrict_with_error
+  has_many :monitors, class_name: "Uptime::Monitor", dependent: :restrict_with_error
 
   normalizes :path, with: ->(path) { path.strip.delete_suffix("/").presence || path.strip }
 

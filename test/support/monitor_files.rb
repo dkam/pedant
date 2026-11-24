@@ -13,7 +13,7 @@ module MonitorFiles
     dir = Dir.mktmpdir("pedant-source")
     @monitor_dirs << dir
     write_monitor_files(dir, files)
-    Uptime::Source.create!(name: name, path: dir)
+    Source.create!(name: name, path: dir)
   end
 
   def write_monitor_files(dir, files)

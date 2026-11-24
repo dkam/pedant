@@ -49,7 +49,7 @@ class MonitorsControllerTest < ActionDispatch::IntegrationTest
     Uptime::Check.delete_all
     Uptime::StateChange.delete_all
     Uptime::Monitor.delete_all
-    Uptime::Source.delete_all
+    Source.delete_all
     sign_in_with_password
 
     get root_url

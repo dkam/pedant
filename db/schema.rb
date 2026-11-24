@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_22_060000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_24_120000) do
   create_table "alert_channels", force: :cascade do |t|
     t.string "type", null: false
     t.boolean "enabled", default: true, null: false
@@ -74,6 +74,15 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_22_060000) do
     t.index ["user_id"], name: "index_oidc_sessions_on_user_id"
   end
 
+  create_table "sources", force: :cascade do |t|
+    t.string "name", null: false
+    t.string "path", null: false
+    t.datetime "synced_at"
+    t.text "sync_errors"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+  end
+
   create_table "uptime_checks", force: :cascade do |t|
     t.integer "monitor_id", null: false
     t.string "status", null: false
@@ -123,15 +132,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_22_060000) do
     t.index ["source_id"], name: "index_uptime_monitors_on_source_id"
   end
 
-  create_table "uptime_sources", force: :cascade do |t|
-    t.string "name", null: false
-    t.string "path", null: false
-    t.datetime "synced_at"
-    t.text "sync_errors"
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-  end
-
   create_table "uptime_state_changes", force: :cascade do |t|
     t.integer "monitor_id", null: false
     t.string "from_state", null: false
@@ -158,6 +158,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_22_060000) do
   add_foreign_key "alerts", "uptime_monitors", column: "monitor_id"
   add_foreign_key "oidc_sessions", "users"
   add_foreign_key "uptime_checks", "uptime_monitors", column: "monitor_id"
-  add_foreign_key "uptime_monitors", "uptime_sources", column: "source_id"
+  add_foreign_key "uptime_monitors", "sources"
   add_foreign_key "uptime_state_changes", "uptime_monitors", column: "monitor_id"
 end
