@@ -73,16 +73,17 @@ Kuma does two things, and Pedant replaces both. Seed both from Kuma's export
   plaintext** (ADR 0007).
 
 Later milestones, once the doco-cd trial on misc01 exists: read doco-cd's API,
-compare desired state (`.doco-cd.<host>.yml`) with the running state and flag
-drift, PR previews, and triggering deploys after a merge. Keep the source of
-"what's running" behind an interface, so the SSH reader and a later doco-cd
-reader are interchangeable.
+compare desired state (`.doco-cd.<host>.yml`, from every source repo: ADR
+0030) with the running state and flag drift, PR previews, and triggering
+deploys after a merge. Keep the source of "what's running" behind an
+interface, so the SSH reader and a later doco-cd reader are interchangeable.
 
 Also eventual: **a CLI and an API**, so scripts and agents can ask "what runs
 where, at which version, and is it up" without the web UI. They follow the same
 rules as the UI:
 - Reads are open to any authenticated client.
-- Any change is a PR against booko-services (ADR 0002), never a direct deploy.
+- Any change is a PR against the repo that defines the stack (ADRs 0002,
+  0030), never a direct deploy.
 - Nothing removes volumes (ADR 0001).
 
 The agent-facing side is a read-only MCP server at `POST /mcp` (ADR 0025),

@@ -162,3 +162,8 @@ without Gitea access. The issue remains the place for discussion.
   adds an `about` MCP tool: Pedant's version and revision, Ruby, Rails, OS,
   host kernel, C libraries and every gem, default gems included, for checking
   an advisory. Over MCP only, never on the public website.
+- [`decisions/0030-a-source-is-a-repo.md`](decisions/0030-a-source-is-a-repo.md)
+  makes a source a git repo, read for both `monitors.yml` and
+  `.doco-cd.<host>.yml`, with any number of them (silodrive-infra beside
+  booko-services). A host's desired state is the union across sources, a plan
+  is a PR in one repo, and every repo that deploys carries the delete guard.
