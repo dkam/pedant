@@ -1,3 +1,5 @@
+require "open3"
+
 # A stacks repo that monitors.yml files are read from (ADR 0016), and later
 # each host's desired deployments (ADR 0030). For now it's a local checkout
 # the owner keeps up to date.
@@ -33,6 +35,11 @@ class Source < ApplicationRecord
   # 30s, 5m, 3h, 1d, or plain seconds.
   DURATION = /\A(\d+)\s*(s|m|h|d)\z/
   DURATION_UNITS = { "s" => 1, "m" => 60, "h" => 3600, "d" => 86_400 }.freeze
+  # The checkout is the owner's own, but on grab01 it belongs to another user
+  # and is mounted read-only, so git would refuse it as "dubious ownership" and
+  # couldn't take its optional index lock. Pedant only reads it. fsmonitor off,
+  # so a status never starts a daemon.
+  GIT = %w[ git --no-optional-locks -c safe.directory=* -c core.fsmonitor=false ].freeze
 
   has_many :monitors, class_name: "Uptime::Monitor", dependent: :restrict_with_error
 
@@ -45,6 +52,7 @@ class Source < ApplicationRecord
 
   def sync!
     errors_found = []
+    commit_sha, dirty = read_checkout
     entries, unreadable = read_entries(errors_found)
 
     transaction do
@@ -60,7 +68,7 @@ class Source < ApplicationRecord
         monitor.update!(retired_at: Time.current)
       end unless unreadable[:all]
 
-      update!(synced_at: Time.current, sync_errors: errors_found.join("\n").presence)
+      update!(synced_at: Time.current, sync_errors: errors_found.join("\n").presence, commit_sha: commit_sha, dirty: dirty)
     end
   end
 
@@ -71,6 +79,24 @@ class Source < ApplicationRecord
       elsif !File.directory?(path)
         errors.add(:path, "isn't a directory Pedant can read")
       end
+    end
+
+    # The commit the checkout is at, and whether it has local changes, tracked
+    # or not, since the sync reads every monitors.yml on disk. Nil and nil when
+    # it isn't a git checkout, or git can't read it.
+    def read_checkout
+      commit_sha = git("rev-parse", "--verify", "HEAD")
+      return [ nil, nil ] unless commit_sha
+
+      status = git("status", "--porcelain")
+      [ commit_sha, status && status.present? ]
+    end
+
+    def git(*args)
+      output, _errors, status = Open3.capture3(*GIT, "-C", path, *args)
+      output.strip if status.success?
+    rescue SystemCallError
+      nil
     end
 
     # Returns { key => [definition, file] }, and what couldn't be read: whole

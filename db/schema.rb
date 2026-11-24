@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_24_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_24_130000) do
   create_table "alert_channels", force: :cascade do |t|
     t.string "type", null: false
     t.boolean "enabled", default: true, null: false
@@ -81,6 +81,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_24_120000) do
     t.text "sync_errors"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "commit_sha"
+    t.boolean "dirty"
   end
 
   create_table "uptime_checks", force: :cascade do |t|

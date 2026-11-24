@@ -322,4 +322,45 @@ class SourceTest < ActiveSupport::TestCase
     source.sync!
     assert_match(/unknown field.*expect_body/, source.sync_error_list.join)
   end
+
+  # Which commit Pedant read, so drift can tell a stale checkout from a stale
+  # host (ADR 0030, #16), and so #12's own clone has somewhere to record it.
+  test "a git checkout records the commit it was synced at" do
+    source = monitor_source("monitors.yml" => { "splat" => { "http" => "http://splat.local/" } })
+    sha = git_commit_all(source.path)
+
+    source.sync!
+
+    assert_equal [ sha, false ], [ source.commit_sha, source.dirty ]
+  end
+
+  test "an edited file in the checkout is recorded as local changes" do
+    source = monitor_source("monitors.yml" => { "splat" => { "http" => "http://splat.local/" } })
+    git_commit_all(source.path)
+    write_monitor_files(source.path, "monitors.yml" => { "splat" => { "http" => "http://splat.local:3030/" } })
+
+    source.sync!
+
+    assert source.dirty
+  end
+
+  # The sync reads every monitors.yml on disk, committed or not.
+  test "a file git doesn't track is recorded as local changes" do
+    source = monitor_source("monitors.yml" => { "splat" => { "http" => "http://splat.local/" } })
+    git_commit_all(source.path)
+    write_monitor_files(source.path, "kith/monitors.yml" => { "kith" => { "http" => "http://kith.local/" } })
+
+    source.sync!
+
+    assert source.dirty
+  end
+
+  test "a directory that isn't a git checkout has no commit, and syncs as before" do
+    source = monitor_source("monitors.yml" => { "splat" => { "http" => "http://splat.local/" } })
+
+    source.sync!
+
+    assert_equal [ nil, nil ], [ source.commit_sha, source.dirty ]
+    assert_equal [ "splat" ], source.monitors.pluck(:key)
+  end
 end

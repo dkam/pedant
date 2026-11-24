@@ -12,6 +12,8 @@
           <span class="font-medium"><%= source.name %></span>
           <span class="text-xs text-faint">
             <%= source.synced_at ? "Synced #{time_ago_in_words(source.synced_at)} ago" : "Not synced yet" %>
+            <% if source.commit_sha %>at <code class="font-mono" title="<%= source.commit_sha %>"><%= source.commit_sha.first(7) %></code><% end %>
+            <% if source.dirty %>· <span class="text-warn">local changes</span><% end %>
             · <%= pluralize(source.monitors.active.count, "monitor") %>
           </span>
         </div>

@@ -33,6 +33,16 @@ module MonitorFiles
     File.delete(File.join(dir, relative))
   end
 
+  # Makes dir a git checkout with everything in it committed, and returns the
+  # commit. Its own identity and no signing, whatever the machine's git config.
+  def git_commit_all(dir)
+    git = [ "git", "-C", dir, "-c", "user.name=Pedant", "-c", "user.email=pedant@example.test", "-c", "commit.gpgsign=false" ]
+    system(*git, "init", "-q", exception: true)
+    system(*git, "add", "-A", exception: true)
+    system(*git, "commit", "-q", "--no-verify", "-m", "Monitors", exception: true)
+    IO.popen([ "git", "-C", dir, "rev-parse", "HEAD" ], &:read).strip
+  end
+
   def self.included(base)
     base.teardown { Array(@monitor_dirs).each { |dir| FileUtils.rm_rf(dir) } }
   end

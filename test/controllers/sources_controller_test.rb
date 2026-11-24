@@ -82,4 +82,16 @@ class SourcesControllerTest < ActionDispatch::IntegrationTest
     # A saved source's name can't be changed; only its path.
     assert_select "form[action=?] input[name=?]", source_path(source), "source[path]"
   end
+
+  test "settings show the commit each source was synced at, and local changes" do
+    sign_in_with_password
+    sha = git_commit_all(@dir)
+    File.write(File.join(@dir, "notes.txt"), "an edit on the host")
+    Source.create!(name: "koti", path: @dir).sync!
+
+    get settings_url
+
+    assert_select "[data-source] code", sha[0, 7]
+    assert_select "[data-source]", /local changes/
+  end
 end
