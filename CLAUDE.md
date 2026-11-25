@@ -112,6 +112,9 @@ Matches the sibling apps in `../` (splat, spool, clinch):
   dark mode covers them (ADR 0028). A test fails on a palette class.
 - Solid Cache, Solid Cable
 - Thruster in front of Puma in the container
+- Errors go to Splat through `sentry-rails` when `SENTRY_DSN` is set (ADR
+  0035). Keep what it sends free of credentials, and keep trace headers off
+  Pedant's outgoing requests: `test/integration/error_tracking_test.rb`.
 - **Jobs: Solid Queue** (ADR 0010), using recurring tasks in
   `config/recurring.yml`. Checks get their own queue, so they never wait
   behind slow work.

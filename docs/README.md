@@ -187,3 +187,8 @@ without Gitea access. The issue remains the place for discussion.
   amends 0029: signed in, every page's footer names Pedant's version and
   revision, Rails and Ruby. Signed out there's no footer, since the site is
   public.
+- [`decisions/0035-errors-to-splat.md`](decisions/0035-errors-to-splat.md)
+  sends Pedant's own errors to Splat with `sentry-rails` when `SENTRY_DSN` is
+  set, carrying no credential. There are no trace headers on checks, since
+  their baggage would name the release, no breadcrumbs, and no client IP,
+  cookies or bodies. Tests check each of these.

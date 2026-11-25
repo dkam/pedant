@@ -48,6 +48,10 @@ gem "jwt"
 # spool use, rather than a hand-rolled protocol.
 gem "mcp", "~> 1.11"
 
+# Pedant's own errors, sent to Splat over the Sentry protocol (ADR 0035). Off
+# unless SENTRY_DSN is set, so development and test send nothing.
+gem "sentry-rails", "~> 7.3"
+
 
 group :development, :test do
   # See https://guides.rubyonrails.org/debugging_rails_applications.html#debugging-with-the-debug-gem
