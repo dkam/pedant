@@ -19,9 +19,10 @@ WORKDIR /rails
 
 # Install base packages. git reads the commit each source is at (dkam/pedant#16),
 # and fetches a source with a git URL; openssh-client gives it ssh, and
-# ssh-keygen and ssh-keyscan for its deploy key and host keys (ADR 0037).
+# ssh-keygen and ssh-keyscan for its deploy key and host keys (ADR 0037). tini
+# is PID 1, to reap what those leave (ADR 0038).
 RUN apt-get update -qq && \
-    apt-get install --no-install-recommends -y curl git libjemalloc2 libvips openssh-client sqlite3 && \
+    apt-get install --no-install-recommends -y curl git libjemalloc2 libvips openssh-client sqlite3 tini && \
     ln -s /usr/lib/$(uname -m)-linux-gnu/libjemalloc.so.2 /usr/local/lib/libjemalloc.so && \
     rm -rf /var/lib/apt/lists /var/cache/apt/archives
 
@@ -90,8 +91,11 @@ USER 1000:1000
 COPY --chown=rails:rails --from=build "${BUNDLE_PATH}" "${BUNDLE_PATH}"
 COPY --chown=rails:rails --from=build /rails /rails
 
-# Entrypoint prepares the database.
-ENTRYPOINT ["/rails/bin/docker-entrypoint"]
+# tini runs as PID 1 and reaps any process whose parent has gone, such as an ssh
+# left when a hung fetch is killed (ADR 0038). thrust, PID 1 before, reaps
+# nothing. -s makes it reap even under another init (compose's init: true).
+# The entrypoint prepares the database.
+ENTRYPOINT ["/usr/bin/tini", "-s", "--", "/rails/bin/docker-entrypoint"]
 
 # Start server via Thruster by default, this can be overwritten at runtime
 EXPOSE 80

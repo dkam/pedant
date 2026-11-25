@@ -273,6 +273,32 @@ class SourceRemoteTest < ActiveSupport::TestCase
     Source::Remote.timeout = Source::Remote::TIMEOUT
   end
 
+  # A process git leaves running is adopted by the container's PID 1, which
+  # must reap it, or it stays a zombie until the container can't fork. On
+  # grab01, PID 1 was thrust, which reaps nothing, and a fetch every minute
+  # filled the container's 1008 tasks in eight hours. Here the test's own
+  # child stands in for PID 1: it adopts what the fetches leave, and counts
+  # what it reaps.
+  test "a fetch leaves no process behind for PID 1 to reap" do
+    skip "PR_SET_CHILD_SUBREAPER is Linux's, and 157 is x86_64's prctl" unless RUBY_PLATFORM.start_with?("x86_64-linux")
+    url, = upstream_repo("monitors.yml" => SPLAT)
+    remote, directory = Source::Remote.new(url), File.join(@source_clones, "1")
+
+    pid = fork do
+      reaped = 0
+      syscall(157, 36, 1, 0, 0, 0) # prctl(PR_SET_CHILD_SUBREAPER, 1)
+      2.times { remote.fetch(directory, "main") }
+      loop { Process.wait(-1) and reaped += 1 }
+    rescue Errno::ECHILD
+      exit!(reaped)
+    rescue Exception
+      exit!(255)
+    end
+    Process.wait(pid)
+
+    assert_equal 0, $?.exitstatus, "two fetches left #{$?.exitstatus} processes to reap (255: the fetch itself failed)"
+  end
+
   test "the readout names the URL and branch, and never a key" do
     source = Source.create!(name: "booko-services", url: "ssh://git@git.booko.info:2222/Booko/booko-services.git", branch: "main")
 

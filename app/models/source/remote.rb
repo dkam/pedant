@@ -153,8 +153,15 @@ class Source::Remote
     end
 
     # Runs git in the clone, killing it and its ssh if it runs past the timeout.
+    #
+    # A fetch ends with git's housekeeping, which by default detaches: it
+    # leaves a process for PID 1 to reap, and in a container nothing may. So it
+    # runs in the foreground, as the fetch's own child, within the timeout.
     def git(env, directory, *args)
-      command = [ "git", "-C", directory, "-c", "core.hooksPath=#{File::NULL}", "-c", "init.defaultBranch=pedant", *args ]
+      command = [
+        "git", "-C", directory, "-c", "core.hooksPath=#{File::NULL}", "-c", "init.defaultBranch=pedant",
+        "-c", "maintenance.autoDetach=false", "-c", "gc.autoDetach=false", *args
+      ]
       Open3.popen3(env, *command, pgroup: true) do |stdin, stdout, stderr, wait|
         stdin.close
         readers = [ stdout, stderr ].map { |io| Thread.new { io.read } }
