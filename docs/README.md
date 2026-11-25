@@ -183,3 +183,7 @@ without Gitea access. The issue remains the place for discussion.
   and is muted on the dashboard. Recovering ends the hide, and a reminder goes
   out at once if it ends with the monitor still down. It's kept in SQLite, since
   it's about an observed outage, not the monitor's definition.
+- [`decisions/0034-versions-in-the-footer-when-signed-in.md`](decisions/0034-versions-in-the-footer-when-signed-in.md)
+  amends 0029: signed in, every page's footer names Pedant's version and
+  revision, Rails and Ruby. Signed out there's no footer, since the site is
+  public.

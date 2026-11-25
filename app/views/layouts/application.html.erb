@@ -68,5 +68,13 @@
       <% if notice %><div class="notice mb-6"><%= notice %></div><% end %>
       <%= yield %>
     </main>
+
+    <%# Signed in only: pedant.booko.info is public, and exact versions tell
+        anyone which advisories to try (ADRs 0029, 0034). %>
+    <% if authenticated? %>
+      <footer data-versions class="mx-auto max-w-5xl px-4 pb-8">
+        <p class="border-t border-rule pt-4 text-xs text-faint"><%= versions_line %></p>
+      </footer>
+    <% end %>
   </body>
 </html>
