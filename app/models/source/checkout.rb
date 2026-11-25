@@ -12,8 +12,10 @@ class Source::Checkout
   # so a status never starts a daemon.
   GIT = %w[ git --no-optional-locks -c safe.directory=* -c core.fsmonitor=false ].freeze
 
-  def initialize(path)
-    @path = path
+  attr_reader :directory
+
+  def initialize(directory)
+    @directory = directory
   end
 
   # The commit HEAD is at. Nil when it isn't a git checkout, or git can't read it.
@@ -38,7 +40,7 @@ class Source::Checkout
 
   private
     def git(*args)
-      output, _errors, status = Open3.capture3(*GIT, "-C", @path, *args)
+      output, _errors, status = Open3.capture3(*GIT, "-C", directory, *args)
       output if status.success?
     rescue SystemCallError
       nil

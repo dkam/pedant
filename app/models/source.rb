@@ -1,7 +1,13 @@
 # A stacks repo that monitors.yml files are read from (ADR 0016), and each
-# host's desired deployments (ADR 0030, Deployments::Desired). For now it's a
-# local checkout the owner keeps up to date. Each sync records the commit it's
-# at, which the deployments side reads (ADR 0032).
+# host's desired deployments (ADR 0030, Deployments::Desired). It's a git URL
+# and a branch, which Pedant clones into storage/ and fetches at every sync
+# (ADR 0037), or a local checkout someone else keeps up to date (a path), for
+# development and tests. Each sync records the commit it's at, which the
+# deployments side reads (ADR 0032).
+#
+# An ssh source has a deploy key of its own, made here and encrypted, and the
+# host keys pinned when it was added. A fetch that fails changes nothing, as
+# a file that doesn't parse changes nothing.
 #
 # Syncing copies each entry's definition onto its monitor. Nothing a broken
 # file says is applied: a file that doesn't parse changes none of its monitors
@@ -35,18 +41,56 @@ class Source < ApplicationRecord
   DURATION = /\A(\d+)\s*(s|m|h|d)\z/
   DURATION_UNITS = { "s" => 1, "m" => 60, "h" => 3600, "d" => 86_400 }.freeze
 
+  # A branch name git takes, and nothing it would read as an option or a range.
+  BRANCH = %r{\A(?!-)(?!.*\.\.)(?!.*//)[A-Za-z0-9._/-]+(?<![./])\z}
+
   has_many :monitors, class_name: "Uptime::Monitor", dependent: :restrict_with_error
 
-  normalizes :path, with: ->(path) { path.strip.delete_suffix("/").presence || path.strip }
+  encrypts :deploy_key
+
+  normalizes :path, with: ->(path) { path.strip.delete_suffix("/").presence || path.strip.presence }
+  normalizes :url, :branch, :host_keys, with: ->(value) { value.strip.presence }
 
   validates :name, presence: true
-  validate :path_is_a_directory, if: :will_save_change_to_path?
+  validate :path_or_url
+  validate :path_is_a_directory, if: -> { path && will_save_change_to_path? }
+  validate :url_is_fetchable, if: :remote?
+  validates :branch, presence: true, format: { with: BRANCH, message: "isn't a branch name", allow_blank: true }, if: :remote?
+  validate :host_keys_are_known_hosts_lines, if: -> { ssh? && host_keys && will_save_change_to_host_keys? }
+  validate :pin_host_keys, if: :ssh?
+
+  # The add form always sends a branch, even for a local checkout.
+  before_validation { self.branch = nil unless remote? }
+  before_save :make_deploy_key, if: -> { ssh? && deploy_key.blank? }
+
+  # Where sources with a URL are cloned: storage/sources/<id>. Tests set
+  # config.x.source_clones; unset, config.x gives empty options, not nil.
+  def self.clones_root = Pathname(Rails.configuration.x.source_clones.presence || Rails.root.join("storage", "sources"))
+
+  def remote? = url.present?
+  def remote = Source::Remote.new(url)
+  def ssh? = remote? && remote.ssh?
+
+  # What's read: Pedant's own clone, or the local checkout.
+  def directory = remote? ? self.class.clones_root.join(id.to_s).to_s : path
 
   def sync_error_list = sync_errors.to_s.lines(chomp: true)
 
-  def checkout = Source::Checkout.new(path)
+  def checkout = Source::Checkout.new(directory)
+
+  # "SHA256:09mp… (ED25519)", one for each pinned key, to check against the
+  # fingerprints the forge publishes.
+  def host_key_fingerprints = host_keys.to_s.lines.filter_map { |line| Source::Remote.fingerprint(line) }
 
   def sync!
+    if remote?
+      begin
+        remote.fetch(directory, branch, deploy_key: deploy_key, host_keys: host_keys)
+      rescue Source::Remote::Failed => error
+        return update!(synced_at: Time.current, sync_errors: "Couldn't fetch #{branch} from #{url}: #{error.message}")
+      end
+    end
+
     errors_found = []
     commit_sha, dirty = read_checkout
     entries, unreadable = read_entries(errors_found)
@@ -69,6 +113,43 @@ class Source < ApplicationRecord
   end
 
   private
+    def path_or_url
+      errors.add(:base, "Give a git URL or a path to a checkout, not both") if path && url
+      errors.add(:url, "can't be blank") unless path || url
+    end
+
+    def url_is_fetchable
+      problem = remote.problem
+      errors.add(:url, problem) if problem
+    end
+
+    def host_keys_are_known_hosts_lines
+      lines = host_keys.lines.map(&:strip).reject { |line| line.empty? || line.start_with?("#") }
+      if lines.empty? || lines.any? { |line| Source::Remote.fingerprint(line).nil? }
+        errors.add(:host_keys, "should be lines from known_hosts, as ssh-keyscan prints them")
+      end
+    end
+
+    # Read once, when the source is added or its URL names another host, never
+    # at a fetch. Keys the owner pasted are kept as they are.
+    def pin_host_keys
+      return if errors[:url].any? || errors[:host_keys].any?
+      return if host_keys && !(will_save_change_to_url? && !will_save_change_to_host_keys? && host_moved?)
+
+      self.host_keys = remote.scan_host_keys&.strip
+      errors.add(:host_keys, "couldn't be read from #{remote.host_name}. Paste them from known_hosts instead") unless host_keys
+    end
+
+    def host_moved?
+      url_in_database.nil? || Source::Remote.new(url_in_database).then { |was| !was.ssh? || was.host_name != remote.host_name }
+    rescue URI::Error
+      true
+    end
+
+    def make_deploy_key
+      self.deploy_key, self.deploy_public_key = Source::Remote.generate_key("pedant #{name}")
+    end
+
     def path_is_a_directory
       if path.blank? || !path.start_with?("/")
         errors.add(:path, "must be an absolute path")
@@ -99,7 +180,7 @@ class Source < ApplicationRecord
       end
 
       # Shallowest first, so the root file keeps a key it shares with a stack's.
-      Dir.glob(FILES, base: path).sort_by { |file| [ file.count("/"), file ] }.each do |file|
+      Dir.glob(FILES, base: directory).sort_by { |file| [ file.count("/"), file ] }.each do |file|
         monitors_in(file, errors_found, unreadable)&.each do |key, entry|
           key = key.to_s
           definition, problems = definition_for(key, entry)
@@ -126,17 +207,17 @@ class Source < ApplicationRecord
     # starts, and a checkout deleted under a running container leaves its
     # mount empty. A repo retires all its monitors with a file that says so.
     def unreadable_checkout
-      if !File.directory?(path)
-        "Can't read #{path}: no such directory"
-      elsif Dir.empty?(path)
-        "#{path} is empty, so nothing changed: is the checkout there, and mounted?"
+      if !File.directory?(directory)
+        "Can't read #{directory}: no such directory"
+      elsif Dir.empty?(directory)
+        "#{directory} is empty, so nothing changed: is the checkout there, and mounted?"
       end
     rescue SystemCallError => error
-      "Can't read #{path}: #{error.message}"
+      "Can't read #{directory}: #{error.message}"
     end
 
     def monitors_in(file, errors_found, unreadable)
-      document = YAML.safe_load_file(File.join(path, file)) || {}
+      document = YAML.safe_load_file(File.join(directory, file)) || {}
       found = document.is_a?(Hash) ? (document["monitors"] || {}) : nil
       raise Psych::Exception, "expected a 'monitors:' map at the top" unless found.is_a?(Hash)
       found

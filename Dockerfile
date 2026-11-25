@@ -17,9 +17,11 @@ LABEL org.opencontainers.image.source=https://github.com/dkam/pedant
 # Rails app lives here
 WORKDIR /rails
 
-# Install base packages. git reads the commit each source is at (dkam/pedant#16).
+# Install base packages. git reads the commit each source is at (dkam/pedant#16),
+# and fetches a source with a git URL; openssh-client gives it ssh, and
+# ssh-keygen and ssh-keyscan for its deploy key and host keys (ADR 0037).
 RUN apt-get update -qq && \
-    apt-get install --no-install-recommends -y curl git libjemalloc2 libvips sqlite3 && \
+    apt-get install --no-install-recommends -y curl git libjemalloc2 libvips openssh-client sqlite3 && \
     ln -s /usr/lib/$(uname -m)-linux-gnu/libjemalloc.so.2 /usr/local/lib/libjemalloc.so && \
     rm -rf /var/lib/apt/lists /var/cache/apt/archives
 

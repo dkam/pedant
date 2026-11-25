@@ -1,5 +1,6 @@
-# Where monitors.yml files are read from (ADR 0016). Managed on the settings
-# page; saving or syncing reads the files straight away.
+# Where monitors.yml files are read from (ADR 0016): a git URL and a branch
+# Pedant fetches (ADR 0037), or a local checkout. Managed on the settings page;
+# saving or syncing fetches and reads the files straight away.
 class SourcesController < ApplicationController
   def create
     @source = Source.new(source_params)
@@ -20,7 +21,7 @@ class SourcesController < ApplicationController
 
   private
     def source_params
-      params.expect(source: %i[ name path ])
+      params.expect(source: %i[ name path url branch host_keys ])
     end
 
     def save_and_sync(notice)

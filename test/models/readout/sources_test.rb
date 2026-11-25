@@ -1,7 +1,7 @@
 require "test_helper"
 
 class Readout::SourcesTest < ActiveSupport::TestCase
-  FIELDS = %i[ id name path synced_at commit_sha dirty sync_errors monitors retired_monitors ].freeze
+  FIELDS = %i[ id name path url branch synced_at commit_sha dirty sync_errors monitors retired_monitors ].freeze
 
   test "names its fields, and nothing else" do
     monitor_source({ "monitors.yml" => { "splat" => { "http" => "http://splat.local/up" } } }).sync!

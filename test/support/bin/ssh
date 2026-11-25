@@ -1,0 +1,36 @@
+#!/usr/bin/env ruby
+# Stands in for ssh in tests (#12): records how Pedant's fetch called it and
+# what the files it named held, then runs the remote command on this machine,
+# as the forge's sshd would. It doesn't check host keys itself; the test checks
+# that ssh was told to accept only the pinned ones.
+require "json"
+
+args = ARGV.dup
+command = args.pop
+host = args.pop
+options = []
+flags = {}
+until args.empty?
+  flag = args.shift
+  value = args.shift
+  flag == "-o" ? options << value : flags[flag] = value
+end
+
+identity = flags["-i"]
+known_hosts = options.filter_map { |option| option.delete_prefix("UserKnownHostsFile=") if option.start_with?("UserKnownHostsFile=") }.first
+File.write(ENV.fetch("PEDANT_FAKE_SSH_LOG"), JSON.generate(
+  host: host, command: command, flags: flags, options: options,
+  identity: identity && File.read(identity), identity_mode: identity && format("%o", File.stat(identity).mode & 0o777),
+  known_hosts: known_hosts && File.read(known_hosts), agent: ENV["SSH_AUTH_SOCK"], pid: Process.pid
+))
+
+# As a forge that never answers, when a test asks.
+sleep 30 if ENV["PEDANT_FAKE_SSH_HANG"]
+
+# As ssh fails before it runs anything, when a test asks.
+if (failure = ENV["PEDANT_FAKE_SSH_FAIL"])
+  $stderr.write(failure)
+  exit 255
+end
+
+exec "sh", "-c", command

@@ -2,15 +2,17 @@
   <div>
     <h2 class="text-lg font-semibold">Monitor sources</h2>
     <p class="mt-1 text-sm text-soft">
-      Checkouts of your stacks repos. Pedant reads <code class="font-mono">monitors.yml</code> at the top and in each
-      stack's folder, every minute.
+      Your stacks repos. Every minute, Pedant fetches each one and reads <code class="font-mono">monitors.yml</code>
+      at the top and in each stack's folder.
     </p>
-    <p class="mt-2 text-sm text-soft">Keep the checkout up to date and the monitors follow.</p>
+    <p class="mt-2 text-sm text-soft">
+      For an ssh URL, Pedant makes a deploy key. Add it to the repo, read-only, and the next sync fetches.
+    </p>
   </div>
 
   <div class="space-y-4">
     <% sources.each do |source| %>
-      <div data-source class="rounded-lg border border-rule bg-surface p-4 sm:p-6">
+      <div data-source class="@container rounded-lg border border-rule bg-surface p-4 sm:p-6">
         <div class="flex flex-wrap items-start justify-between gap-x-4 gap-y-1">
           <div class="min-w-0">
             <p class="font-medium"><%= source.name %></p>
@@ -26,18 +28,87 @@
 
         <%= form_with model: source, url: source_path(source), method: :patch, class: "mt-4 space-y-3" do |form| %>
           <%= render "shared/errors", record: source %>
-          <div class="flex items-end gap-3">
-            <div class="min-w-0 grow">
-              <%= form.label :path, "Path", class: "label", for: "source_#{source.id}_path" %>
-              <%= form.text_field :path, class: "field font-mono", id: "source_#{source.id}_path" %>
+          <% if source.url_in_database || source.url %>
+            <div class="grid gap-3 @lg:grid-cols-[2fr_1fr_auto] @lg:items-end">
+              <div class="min-w-0">
+                <%= form.label :url, "Git URL", class: "label", for: "source_#{source.id}_url" %>
+                <%= form.text_field :url, class: "field font-mono", id: "source_#{source.id}_url" %>
+              </div>
+              <div class="min-w-0">
+                <%= form.label :branch, "Branch", class: "label", for: "source_#{source.id}_branch" %>
+                <%= form.text_field :branch, class: "field font-mono", id: "source_#{source.id}_branch" %>
+              </div>
+              <%= form.submit "Save", class: "btn shrink-0" %>
             </div>
-            <%= form.submit "Save path", class: "btn shrink-0" %>
-          </div>
+          <% else %>
+            <div class="flex items-end gap-3">
+              <div class="min-w-0 grow">
+                <%= form.label :path, "Path", class: "label", for: "source_#{source.id}_path" %>
+                <%= form.text_field :path, class: "field font-mono", id: "source_#{source.id}_path" %>
+              </div>
+              <%= form.submit "Save path", class: "btn shrink-0" %>
+            </div>
+          <% end %>
+
           <% if source.sync_errors.present? %>
             <ul class="alert list-disc space-y-1 pl-8 font-mono text-xs">
               <% source.sync_error_list.each do |error| %><li><%= error %></li><% end %>
             </ul>
           <% end %>
+
+          <% if source.deploy_public_key %>
+            <div data-deploy-key>
+              <%= label_tag "source_#{source.id}_deploy_key", "Deploy key", class: "label" %>
+              <%# No name, so it's never submitted: it's there to copy. %>
+              <%= text_area_tag nil, source.deploy_public_key, id: "source_#{source.id}_deploy_key", readonly: true, rows: 3,
+                    class: "field font-mono text-xs break-all" %>
+              <p class="hint">Add it to the repo as a deploy key, without write access. Pedant keeps the private half, encrypted.</p>
+            </div>
+          <% end %>
+
+          <% if source.ssh? && source.host_keys %>
+            <div data-host-keys>
+              <p class="label">Host keys</p>
+              <ul class="mt-1 space-y-0.5 font-mono text-xs text-soft">
+                <% source.host_key_fingerprints.each do |fingerprint| %><li><%= fingerprint %></li><% end %>
+              </ul>
+              <p class="hint">
+                Read from the host when the source was added, and Pedant accepts no others. Check them against the
+                fingerprints your forge publishes.
+              </p>
+              <details class="mt-2 text-sm">
+                <summary class="cursor-pointer text-soft hover:text-ink">Replace them</summary>
+                <%= form.text_area :host_keys, rows: 3, class: "field font-mono text-xs", id: "source_#{source.id}_host_keys",
+                      aria: { label: "Host keys for #{source.name}" } %>
+                <p class="hint">Lines from <code class="font-mono">known_hosts</code>. Empty it and save to read them from the host again.</p>
+              </details>
+            </div>
+          <% end %>
+        <% end %>
+
+        <% unless source.url_in_database || source.url %>
+          <details class="mt-3 text-sm">
+            <summary class="cursor-pointer text-soft hover:text-ink">Fetch it with git instead</summary>
+            <%= form_with model: source, url: source_path(source), method: :patch, class: "mt-3 space-y-2" do |form| %>
+              <%= form.hidden_field :path, value: "", id: nil %>
+              <div class="grid gap-3 @lg:grid-cols-[2fr_1fr_auto] @lg:items-end">
+                <div class="min-w-0">
+                  <%= form.label :url, "Git URL", class: "label", for: "source_#{source.id}_switch_url" %>
+                  <%= form.text_field :url, required: true, class: "field font-mono", id: "source_#{source.id}_switch_url",
+                        placeholder: "ssh://git@git.booko.info:2222/Booko/booko-services.git" %>
+                </div>
+                <div class="min-w-0">
+                  <%= form.label :branch, "Branch", class: "label", for: "source_#{source.id}_switch_branch" %>
+                  <%= form.text_field :branch, value: "main", class: "field font-mono", id: "source_#{source.id}_switch_branch" %>
+                </div>
+                <%= form.submit "Switch to git", class: "btn shrink-0" %>
+              </div>
+              <p class="hint">
+                It stays the same source, so its monitors keep their history. For an ssh URL, Pedant then shows a deploy
+                key to add to the repo. Until it's added, fetches fail and the monitors stay as they are.
+              </p>
+            <% end %>
+          </details>
         <% end %>
       </div>
     <% end %>
@@ -49,14 +120,26 @@
       <div class="grid gap-5 @lg:grid-cols-[1fr_2fr]">
         <div>
           <%= form.label :name, "Name", class: "label" %>
-          <%= form.text_field :name, required: true, placeholder: "koti-stacks", class: "field" %>
+          <%= form.text_field :name, required: true, placeholder: "booko-services", class: "field" %>
         </div>
         <div>
-          <%= form.label :path, "Path to the checkout", class: "label" %>
-          <%= form.text_field :path, required: true, placeholder: "/srv/koti-stacks", class: "field font-mono" %>
-          <p class="hint">An absolute path on the machine Pedant runs on.</p>
+          <%= form.label :url, "Git URL", class: "label" %>
+          <%= form.text_field :url, placeholder: "ssh://git@git.booko.info:2222/Booko/booko-services.git", class: "field font-mono" %>
+          <p class="hint">ssh, with a deploy key Pedant makes, or https for a public repo. Never a token in the URL.</p>
+        </div>
+        <div>
+          <%= form.label :branch, "Branch", class: "label" %>
+          <%= form.text_field :branch, value: new_source.branch || "main", class: "field font-mono" %>
         </div>
       </div>
+      <details class="text-sm" <%= "open" if new_source.path %>>
+        <summary class="cursor-pointer text-soft hover:text-ink">Or a checkout on this machine</summary>
+        <div class="mt-3">
+          <%= form.label :path, "Path to the checkout", class: "label" %>
+          <%= form.text_field :path, placeholder: "/srv/koti-stacks", class: "field font-mono" %>
+          <p class="hint">An absolute path, which something else keeps up to date. Leave the Git URL empty.</p>
+        </div>
+      </details>
       <%= form.submit "Add source", class: "btn" %>
     <% end %>
   </div>

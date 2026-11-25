@@ -21,7 +21,11 @@ class Readout::Sources
         {
           id: source.id,
           name: source.name,
+          # A local checkout's path, or the git URL and branch Pedant fetches
+          # (ADR 0037). A URL never carries a credential; keys aren't shown.
           path: source.path,
+          url: source.url,
+          branch: source.branch,
           # Sources sync every minute, so an old one means the sync isn't running.
           synced_at: Readout.iso(source.synced_at),
           # Both nil when the path isn't a git checkout: say, an empty

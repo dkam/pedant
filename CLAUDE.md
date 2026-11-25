@@ -41,8 +41,11 @@ Kuma does two things, and Pedant replaces both. Seed both from Kuma's export
 (Pedant issue #1), which hasn't been done yet.
 
 - **Monitors are defined in git** (ADR 0016): a `monitors.yml` at the top of a
-  stacks repo, or in a stack's folder. Pedant syncs them from a checkout every
-  minute and keeps only what it observed. Its UI never edits them.
+  stacks repo, or in a stack's folder. A source is a git URL and a branch,
+  which Pedant clones into `storage/sources/` and fetches every minute, over
+  ssh with a deploy key it makes and host keys pinned when the source is added
+  (ADR 0037). A local-path source is for development and tests. Pedant keeps
+  only what it observed, and its UI never edits monitors.
 - **Active checks:** HTTP (and TCP, TLS expiry) on a schedule, storing up/down,
   when it last changed, and how often it flaps. Code is in `app/models/uptime/`
   (namespaced: a top-level `Monitor` collides with Ruby's).
