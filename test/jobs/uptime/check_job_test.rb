@@ -35,6 +35,20 @@ class Uptime::CheckJobTest < ActiveJob::TestCase
     assert_equal 0, @monitor.consecutive_failures
   end
 
+  # On grab01 on 2026-11-25, Pedant ran out of threads, so it couldn't look a
+  # name up. Every monitor named by hostname went down, though nothing was
+  # wrong with them (#20). A resolver that fails does the same.
+  test "a failure while Pedant can reach addresses but can't look names up is unknown, not down" do
+    stub_request(:get, @monitor.target)
+      .to_raise(Socket::ResolutionError.new("getaddrinfo(3): Temporary failure in name resolution"))
+    Uptime::Connectivity.probe = ->(host, _port) { host.match?(Resolv::AddressRegex) }
+    Uptime::Connectivity.reset
+
+    Uptime::CheckJob.perform_now(@monitor)
+
+    assert_equal "unknown", @monitor.reload.state
+  end
+
   test "a retired monitor isn't checked" do
     @monitor.update!(retired_at: Time.current)
 

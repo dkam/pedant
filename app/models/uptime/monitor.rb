@@ -6,8 +6,9 @@
 # - up / down: down only once failures in a row exceed `retries`. While
 #   retrying it stays up (#retrying?), so a blip isn't counted as a flap.
 # - warn: a pushed value is past its warn limit. Not a failure, not a flap.
-# - unknown: Pedant couldn't tell, because its own connection was down. It
-#   neither counts as a failure nor clears one.
+# - unknown: Pedant couldn't tell, because its own connection or name lookups
+#   were down (Uptime::Connectivity). It neither counts as a failure nor
+#   clears one.
 #
 # Push monitors' own behaviour (values, runs, schedules) is in Uptime::Monitor::Push.
 class Uptime::Monitor < ApplicationRecord

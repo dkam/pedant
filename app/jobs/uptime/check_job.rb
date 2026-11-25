@@ -1,5 +1,6 @@
 # Runs one monitor's check and records it. A failure while Pedant itself can't
-# reach the world is recorded as unknown, not down (Uptime::Connectivity).
+# reach the world, or look a name up, is recorded as unknown, not down
+# (Uptime::Connectivity).
 # The dashboards refresh on the scheduler's next tick (Uptime::ScheduleChecksJob).
 class Uptime::CheckJob < ApplicationJob
   queue_as :checks
@@ -10,7 +11,7 @@ class Uptime::CheckJob < ApplicationJob
 
     result = monitor.check
     if result.down? && !Uptime::Connectivity.online?
-      result = Uptime::Result.new(status: "unknown", message: "Pedant is offline: #{result.message}")
+      result = Uptime::Result.new(status: "unknown", message: "Pedant is offline, or can't look names up: #{result.message}")
     end
 
     monitor.record(result)

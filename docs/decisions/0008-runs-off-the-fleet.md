@@ -37,3 +37,30 @@ only.** Any host will do if it:
 
 - How alerts are delivered. Kuma's current notification channels should be
   part of the Kuma export.
+
+## Amendment (2026-11-26)
+
+"Reach a couple of unrelated, reliable targets" was built as a TCP connection
+to 1.1.1.1 or 9.9.9.9, by address. On 2026-11-25 Pedant on grab01 ran out of
+threads (ADR 0038). Ruby looks a name up in a thread of its own, so no lookup
+worked, and 14 monitors named by hostname went down with "Temporary failure
+in name resolution". The probe needed no lookup and kept passing, so Pedant's
+own failure read as theirs (dkam/pedant#20). A resolver that fails while the
+network works would do the same.
+
+**The reference targets are names, `one.one.one.one` and `dns.quad9.net`,
+dialled the way a TCP check dials.** Pedant is online only if it can look
+one of them up and connect to it. A thread it can't start to try counts as
+a failure to connect. While it's offline, a failed check is "unknown: Pedant
+is offline, or can't look names up".
+
+- **Rejected: treating some errors as Pedant's, whatever the probe says**
+  (`EAI_AGAIN`, `EAGAIN`). A domain whose own nameservers fail also gives
+  `EAI_AGAIN`, and that's a real outage. The probe tells the two apart: the
+  reference names still resolve when only that domain's fail.
+- **Rejected: a second probe, address and name apart,** so a monitor dialled
+  by address could still be marked down while only Pedant's lookups fail.
+  That's more to build for a rare overlap. While Pedant can't look names up,
+  it vouches for nothing.
+- **Not done here:** an alert when Pedant itself is degraded but still
+  sending its heartbeat, such as a sync failing with `cannot fork()`.

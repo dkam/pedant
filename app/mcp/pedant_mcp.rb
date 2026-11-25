@@ -27,8 +27,8 @@ module PedantMcp
         States: up; down (failures in a row passed its retries, or a push was
         missed or reported down); warn (a pushed value is past a warn limit, or
         forecast to reach its level soon); pending (no conclusive result yet);
-        unknown (Pedant's own connection was down, so it couldn't tell; never
-        alerted). "Flapping" is how often it went down: down_in_24h and
+        unknown (Pedant's own connection or name lookups were down, so it
+        couldn't tell; never alerted). "Flapping" is how often it went down: down_in_24h and
         down_in_7d count the outages in that window, including one that
         began earlier and was still going. A down monitor the owner has
         hidden for this outage has hidden_until: no reminders until then, or
