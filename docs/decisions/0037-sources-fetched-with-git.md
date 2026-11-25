@@ -138,3 +138,14 @@ sources stay, for development and tests.
   Pedant's.
 - The webhook that would fetch straight after a merge (#12, "later") is
   unchanged: still later.
+
+## Amendment (2026-11-25)
+
+Consequences said booko's crontab line goes once both sources fetch. Only
+half of it does. On grab01, `~/booko-services` is also the folder grab01's own
+stacks deploy from. Since 2026-11-25 its cron pull, with a deploy key of
+booko's own, is how a merged compose change gets there, so the host step
+after a merge is only `docker compose pull && up -d`. That pull stays until
+doco-cd deploys grab01. What goes is what existed only for Pedant: the
+`/sources/` mounts in `grab01/pedant/compose.yaml`, and the
+`~/silodrive-infra` checkout with its cron line.
