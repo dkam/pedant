@@ -66,6 +66,7 @@ class SourcesControllerTest < ActionDispatch::IntegrationTest
     get settings_url
 
     assert_select "[data-source]", /koti/
+    assert_select "[data-source]", /1 monitor\b/
     assert_select "form[action=?]", sources_path
   end
 

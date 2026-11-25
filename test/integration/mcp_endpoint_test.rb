@@ -133,11 +133,11 @@ class McpEndpointTest < ActionDispatch::IntegrationTest
     assert_equal Pedant::VERSION, tool_json.dig("pedant", "version")
   end
 
-  test "tools/list offers the five tools, each marked read-only" do
+  test "tools/list offers the six tools, each marked read-only" do
     rpc "tools/list"
 
     tools = result.fetch("tools")
-    assert_equal %w[ about list_monitors monitor_history push_monitors recent_alerts ], tools.map { |tool| tool["name"] }.sort
+    assert_equal %w[ about list_monitors list_sources monitor_history push_monitors recent_alerts ], tools.map { |tool| tool["name"] }.sort
     tools.each do |tool|
       assert_equal true, tool.dig("annotations", "readOnlyHint"), tool["name"]
       assert_equal false, tool.dig("annotations", "destructiveHint"), tool["name"]
@@ -178,6 +178,14 @@ class McpEndpointTest < ActionDispatch::IntegrationTest
 
     assert_equal [ "nas-disk" ], tool_json.fetch("monitors").map { |monitor| monitor["key"] }
     assert_equal "42 GB", tool_json.dig("monitors", 0, "push", "value", "shown")
+  end
+
+  test "list_sources reads the sources" do
+    call_tool "list_sources"
+
+    assert_not result["isError"], tool_text
+    source = tool_json.fetch("sources").sole
+    assert_equal [ "koti", @source.path, 2 ], source.values_at("name", "path", "monitors")
   end
 
   test "recent_alerts reads the alerts and their deliveries" do
@@ -250,7 +258,8 @@ class McpEndpointTest < ActionDispatch::IntegrationTest
       [ "push_monitors", {} ],
       [ "push_monitors", { monitor: "nas-disk" } ],
       [ "recent_alerts", {} ],
-      [ "recent_alerts", { monitor: "splat" } ]
+      [ "recent_alerts", { monitor: "splat" } ],
+      [ "list_sources", {} ]
     ].each do |name, arguments|
       call_tool name, **arguments
       assert_not result["isError"], "#{name} #{arguments}: #{tool_text}"

@@ -192,3 +192,8 @@ without Gitea access. The issue remains the place for discussion.
   set, carrying no credential. There are no trace headers on checks, since
   their baggage would name the release, no breadcrumbs, and no client IP,
   cookies or bodies. Tests check each of these.
+- [`decisions/0036-list-sources-over-mcp.md`](decisions/0036-list-sources-over-mcp.md)
+  adds a sixth MCP tool, `list_sources`: each source's path, last sync,
+  commit, sync errors and monitor counts, read through `Readout::Sources`,
+  which the settings page shares. The path is shown, since it tells the right
+  mount from an empty directory and holds no secret.

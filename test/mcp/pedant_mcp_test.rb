@@ -32,6 +32,13 @@ class PedantMcpTest < ActiveSupport::TestCase
     assert_equal JSON.parse(Readout::Monitors.new(state: "down").to_h.to_json), json
   end
 
+  test "list_sources is the sources readout" do
+    json = call(PedantMcp::ListSources)
+
+    assert_equal JSON.parse(Readout::Sources.new.to_h.to_json), json
+    assert_equal [ "koti" ], json["sources"].map { |source| source["name"] }
+  end
+
   test "about is the about readout" do
     json = call(PedantMcp::About)
 

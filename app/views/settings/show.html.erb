@@ -61,7 +61,8 @@
   <%= render "settings/api_tokens" %>
 
   <%# A failed save re-renders this page; show that source as it was submitted, with its errors. %>
-  <%= render "sources/sources",
-        sources: Source.order(:name).map { |source| source.id == @source&.id ? @source : source },
+  <% source_readout = Readout::Sources.new %>
+  <%= render "sources/sources", readout: source_readout,
+        sources: source_readout.sources.map { |source| source.id == @source&.id ? @source : source },
         new_source: (@source if @source&.new_record?) || Source.new %>
 </div>
