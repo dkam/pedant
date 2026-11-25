@@ -1,46 +1,51 @@
 <%# API tokens for the read-only MCP server (ADR 0025). %>
-<section id="api-tokens" data-section="api-tokens" class="mt-6 rounded-lg border border-rule bg-surface p-6">
-  <h2 class="text-lg font-semibold">API tokens</h2>
-  <p class="mt-1 text-sm text-soft">
-    For agents reading Pedant over MCP at <code class="font-mono">/mcp</code>. A token can only read:
-    monitors, their history, push check-ins and alerts. Make one per client, so each can be revoked alone.
-  </p>
+<section id="api-tokens" data-section="api-tokens" class="settings-section">
+  <div>
+    <h2 class="text-lg font-semibold">API tokens</h2>
+    <p class="mt-1 text-sm text-soft">
+      For agents reading Pedant over MCP at <code class="font-mono">/mcp</code>. A token can only read:
+      monitors, their history, push check-ins and alerts.
+    </p>
+    <p class="mt-2 text-sm text-soft">Make one per client, so each can be revoked alone.</p>
+  </div>
 
-  <% if (issued = flash[:api_token]) %>
-    <%# Shown once: Pedant keeps only the token's digest. Kept out of Turbo's cache, so Back doesn't show it again. %>
-    <% content_for :head, tag.meta(name: "turbo-cache-control", content: "no-cache") %>
-    <div data-issued-token class="notice mt-5 text-sm">
-      <p class="font-medium"><%= issued["name"] %>'s token. Copy it now: it won't be shown again.</p>
-      <pre class="mt-2 overflow-x-auto rounded bg-surface p-3 font-mono text-xs"><%= issued["token"] %></pre>
-      <p class="mt-3">For Claude Code:</p>
-      <pre class="mt-2 overflow-x-auto rounded bg-surface p-3 font-mono text-xs">claude mcp add --transport http --scope user pedant <%= request.base_url %>/mcp \
+  <div class="@container space-y-5 rounded-lg border border-rule bg-surface p-4 sm:p-6">
+    <% if (issued = flash[:api_token]) %>
+      <%# Shown once: Pedant keeps only the token's digest. Kept out of Turbo's cache, so Back doesn't show it again. %>
+      <% content_for :head, tag.meta(name: "turbo-cache-control", content: "no-cache") %>
+      <div data-issued-token class="notice text-sm">
+        <p class="font-medium"><%= issued["name"] %>'s token. Copy it now: it won't be shown again.</p>
+        <pre class="mt-2 overflow-x-auto rounded bg-surface p-3 font-mono text-xs"><%= issued["token"] %></pre>
+        <p class="mt-3">For Claude Code:</p>
+        <pre class="mt-2 overflow-x-auto rounded bg-surface p-3 font-mono text-xs">claude mcp add --transport http --scope user pedant <%= request.base_url %>/mcp \
   --header "Authorization: Bearer <%= issued["token"] %>"</pre>
-    </div>
-  <% end %>
+      </div>
+    <% end %>
 
-  <% tokens = ApiToken.order(:created_at) %>
-  <% if tokens.any? %>
-    <ul class="mt-5 divide-y divide-rule-faint rounded border border-rule text-sm">
-      <% tokens.each do |token| %>
-        <li data-api-token="<%= token.id %>" class="flex items-center justify-between gap-3 px-3 py-2">
-          <span>
-            <span class="font-medium"><%= token.name %></span>
-            <span class="block text-xs text-faint">
-              Made <%= time_ago_in_words(token.created_at) %> ago ·
-              <%= token.last_used_at ? "last used #{time_ago_in_words(token.last_used_at)} ago" : "never used" %>
+    <% tokens = ApiToken.order(:created_at) %>
+    <% if tokens.any? %>
+      <ul class="divide-y divide-rule-faint rounded-md border border-rule text-sm">
+        <% tokens.each do |token| %>
+          <li data-api-token="<%= token.id %>" class="flex items-center justify-between gap-3 px-3 py-2">
+            <span class="min-w-0">
+              <span class="block truncate font-medium"><%= token.name %></span>
+              <span class="block text-xs text-faint">
+                Made <%= time_ago_in_words(token.created_at) %> ago ·
+                <%= token.last_used_at ? "last used #{time_ago_in_words(token.last_used_at)} ago" : "never used" %>
+              </span>
             </span>
-          </span>
-          <%= button_to "Revoke", api_token_path(token), method: :delete, class: "text-sm underline" %>
-        </li>
-      <% end %>
-    </ul>
-  <% end %>
+            <%= button_to "Revoke", api_token_path(token), method: :delete, class: "text-sm underline hover:text-bad" %>
+          </li>
+        <% end %>
+      </ul>
+    <% end %>
 
-  <%= form_with model: ApiToken.new, url: api_tokens_path, class: "mt-5 flex items-end gap-3" do |form| %>
-    <div class="grow">
-      <%= form.label :name, "New token for", class: "label" %>
-      <%= form.text_field :name, required: true, maxlength: 100, placeholder: "laptop Claude Code", autocomplete: "off", class: "field" %>
-    </div>
-    <%= form.submit "Make token", class: "btn" %>
-  <% end %>
+    <%= form_with model: ApiToken.new, url: api_tokens_path, class: "flex items-end gap-3" do |form| %>
+      <div class="min-w-0 grow @lg:max-w-sm">
+        <%= form.label :name, "New token for", class: "label" %>
+        <%= form.text_field :name, required: true, maxlength: 100, placeholder: "laptop Claude Code", autocomplete: "off", class: "field" %>
+      </div>
+      <%= form.submit "Make token", class: "btn shrink-0" %>
+    <% end %>
+  </div>
 </section>

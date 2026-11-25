@@ -56,6 +56,11 @@
   .hint { @apply mt-1 text-xs text-faint; }
   .btn { @apply inline-block rounded-md bg-ink px-4 py-2 text-sm font-medium text-surface hover:bg-ink-soft cursor-pointer; }
 
+  /* A section of the settings page: its heading and what it does in a column
+     on the left, its card on the right; stacked on a phone. minmax(0, …) lets
+     a long token or path scroll inside the card instead of widening it. */
+  .settings-section { @apply grid grid-cols-1 gap-x-10 gap-y-4 border-t border-rule py-8 md:grid-cols-[15rem_minmax(0,1fr)]; }
+
   /* Boxes for an error and for good news: a paler wash than a badge's, and a
      border. */
   .alert {
