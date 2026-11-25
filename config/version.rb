@@ -10,5 +10,5 @@
 #
 # This says which release; config/initializers/revision.rb says which commit.
 module Pedant
-  VERSION = "0.12.1"
+  VERSION = "0.12.2"
 end
