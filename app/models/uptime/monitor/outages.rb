@@ -50,7 +50,7 @@ module Uptime::Monitor::Outages
         Alert.create!(monitor: self, kind: "down", title: "#{name} is down", message: [ message, target_line ].compact.join("\n"))
       elsif %w[ up warn ].include?(to) && outage_started_at
         Alert.create!(monitor: self, kind: "recovered", title: "#{name} is back up",
-          message: "Down for #{to_the_minute(at - outage_started_at).inspect}")
+          message: "Down for #{to_the_minute(at - outage_started_at)}")
         self.outage_started_at = nil
         self.reminded_at = nil
         clear_hide
@@ -69,7 +69,7 @@ module Uptime::Monitor::Outages
       transaction do
         update!(reminded_at: now)
         Alert.create!(monitor: self, kind: "reminder", title: "#{name} is still down",
-          message: "Down for #{to_the_minute(now - outage_started_at).inspect}: #{last_message || "no message"}\n#{target_line}")
+          message: "Down for #{to_the_minute(now - outage_started_at)}: #{last_message || "no message"}\n#{target_line}")
       end
     end
 
@@ -83,6 +83,6 @@ module Uptime::Monitor::Outages
 
     # "1 hour and 10 minutes"
     def to_the_minute(seconds)
-      ActiveSupport::Duration.build(((seconds / 60).round * 60).to_i)
+      Uptime.duration_in_words((seconds / 60).round * 60)
     end
 end

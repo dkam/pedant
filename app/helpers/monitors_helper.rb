@@ -30,7 +30,5 @@ module MonitorsHelper
     monitor.hidden_until_next_push ? "#{words}, or until its next push" : words
   end
 
-  def seconds_in_words(seconds)
-    ActiveSupport::Duration.build(seconds).inspect
-  end
+  def seconds_in_words(seconds) = Uptime.duration_in_words(seconds)
 end

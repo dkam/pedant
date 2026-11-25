@@ -105,9 +105,9 @@ module Uptime::Monitor::Push
   private
     def missed_push
       if started_at && max_runtime && Time.current >= started_at + max_runtime
-        Uptime::Result.new(status: "down", message: "Started #{to_the_minute(Time.current - started_at).inspect} ago, still running")
+        Uptime::Result.new(status: "down", message: "Started #{to_the_minute(Time.current - started_at)} ago, still running")
       else
-        Uptime::Result.new(status: "down", message: "No push for #{to_the_minute(Time.current - (last_pushed_at || created_at)).inspect}")
+        Uptime::Result.new(status: "down", message: "No push for #{to_the_minute(Time.current - (last_pushed_at || created_at))}")
       end
     end
 

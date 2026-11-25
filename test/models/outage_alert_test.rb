@@ -47,6 +47,17 @@ class OutageAlertTest < ActiveSupport::TestCase
     assert_nil @monitor.outage_started_at
   end
 
+  # ActiveSupport's month is 2,629,746 seconds, not a whole number of minutes,
+  # so an outage told in months showed stray seconds (#18).
+  test "an outage over a month is told in days, to the minute" do
+    2.times { @monitor.record(result("down")) }
+
+    travel 34.days + 1.hour + 21.minutes
+    @monitor.record(result("up"))
+
+    assert_equal "Down for 34 days, 1 hour, and 21 minutes", Alert.last.message
+  end
+
   test "unknown raises nothing, and doesn't end an outage" do
     2.times { @monitor.record(result("down")) }
 

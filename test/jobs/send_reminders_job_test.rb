@@ -35,6 +35,16 @@ class SendRemindersJobTest < ActiveJob::TestCase
     assert_match "HTTP 503", reminder.message
   end
 
+  # Alert 327, for Booko's Blog, said "1 month, 3 days, 14 hours, 51 minutes,
+  # and 54 seconds" (#18).
+  test "a reminder for an outage over a month says how long in days, to the minute" do
+    travel 34.days + 1.hour + 21.minutes
+    SendRemindersJob.perform_now
+
+    reminder = Alert.where(kind: "reminder").joins(:monitor).find_by!(uptime_monitors: { key: "splat" })
+    assert_match "Down for 34 days, 1 hour, and 21 minutes: HTTP 503", reminder.message
+  end
+
   test "remind_every is per monitor, and never turns reminders off" do
     travel 7.hours
     SendRemindersJob.perform_now
