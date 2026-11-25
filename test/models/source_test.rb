@@ -184,6 +184,19 @@ class SourceTest < ActiveSupport::TestCase
     assert_match(/can't read/i, source.sync_error_list.join)
   end
 
+  # A mount whose checkout is gone: Docker makes the missing directory, empty,
+  # when the container starts, and a checkout deleted under a running container
+  # leaves its mount empty. Neither is a repo with its monitors removed.
+  test "an empty directory changes nothing, and says why" do
+    source = git_source({ "monitors.yml" => { "monitors" => { "splat" => { "http" => "http://splat.local:3030/up" } } }.to_yaml })
+
+    FileUtils.rm_rf(Dir.children(source.path).map { |child| File.join(source.path, child) })
+    source.sync!
+
+    assert_not source.monitors.sole.retired?
+    assert_match(/is empty/, source.sync_error_list.join)
+  end
+
   test "the path must be an absolute path to a directory" do
     assert_not Source.new(name: "koti", path: "relative/path").valid?
     assert_not Source.new(name: "koti", path: "/does/not/exist").valid?

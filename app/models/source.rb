@@ -92,8 +92,8 @@ class Source < ApplicationRecord
       tokens = {}
       unreadable = { all: false, files: [], keys: [] }
 
-      unless File.directory?(path)
-        errors_found << "Can't read #{path}: no such directory"
+      if (problem = unreadable_checkout)
+        errors_found << problem
         unreadable[:all] = true
         return [ entries, unreadable ]
       end
@@ -118,6 +118,21 @@ class Source < ApplicationRecord
       end
 
       [ entries, unreadable ]
+    end
+
+    # Why the checkout can't be read at all, if it can't. An empty directory
+    # counts: it's a mount whose checkout is gone, not a repo with every
+    # monitor removed. Docker makes a missing one, empty, as the container
+    # starts, and a checkout deleted under a running container leaves its
+    # mount empty. A repo retires all its monitors with a file that says so.
+    def unreadable_checkout
+      if !File.directory?(path)
+        "Can't read #{path}: no such directory"
+      elsif Dir.empty?(path)
+        "#{path} is empty, so nothing changed: is the checkout there, and mounted?"
+      end
+    rescue SystemCallError => error
+      "Can't read #{path}: #{error.message}"
     end
 
     def monitors_in(file, errors_found, unreadable)
